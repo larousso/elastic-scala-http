@@ -50,7 +50,7 @@ val client: ElasticClient[JsValue] = ElasticClientBuilder()
 
 # Usage 
 
-## Root level opérations 
+## Root level operations 
 
 ```scala
 
