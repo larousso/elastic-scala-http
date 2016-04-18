@@ -101,7 +101,7 @@ val client: ElasticClient[JsValue] = ElasticClientBuilder()
   }
 ```
 
-## Index level opérations 
+## Index level operations 
 
 ```scala
 
