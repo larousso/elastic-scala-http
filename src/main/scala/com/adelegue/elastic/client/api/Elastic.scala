@@ -280,13 +280,13 @@ trait Elastic[JsonR] {
     *
     * @param index      the name of the index
     * @param `type`     the name of the type
-    * @param request    multiple get request : [[MGets]]
+    * @param request    multiple get request : [[com.adelegue.elastic.client.api.MGets]]
     * @param sWriter    json to string conversion
-    * @param jsonWriter [[MGets]] to json object conversion
+    * @param jsonWriter [[com.adelegue.elastic.client.api.MGets]] to json object conversion
     * @param sReader    string to json object conversion
-    * @param jsonReader json object to [[MGetResponse]] conversion
+    * @param jsonReader json object to [[com.adelegue.elastic.client.api.MGetResponse]] conversion
     * @param ec         ExecutionContext for future execution
-    * @return a [[MGetResponse]] response
+    * @return a [[com.adelegue.elastic.client.api.MGetResponse]] response
     */
   def mget(index: Option[String] = None, `type`: Option[String] = None, request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]]
 
@@ -308,7 +308,7 @@ trait Elastic[JsonR] {
     * @param jsonReader      json string to json object conversion
     * @param ec              ExecutionContext for future execution
     * @tparam Q query object type
-    * @return a [[SearchResponse]]
+    * @return a [[com.adelegue.elastic.client.api.SearchResponse]]
     */
   def search[Q](index: Seq[String], `type`: Seq[String], query: Q, from: Option[Int] = None, size: Option[Int] = None, search_type: Option[SearchType] = None, request_cache: Boolean = false, terminate_after: Option[Int] = None, timeout: Option[Int] = None)(implicit qWrites: Writer[Q, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]]
 
@@ -331,12 +331,12 @@ trait Elastic[JsonR] {
     * @param jsonReader      json string to json object conversion
     * @param ec              ExecutionContext for future execution
     * @tparam Q query object type
-    * @return a [[SearchResponse]]
+    * @return a [[com.adelegue.elastic.client.api.SearchResponse]]
     */
   def aggregation[Q](index: Seq[String], `type`: Seq[String], query: Q, from: Option[Int] = None, size: Option[Int] = None, search_type: Option[SearchType] = None, request_cache: Boolean = false, terminate_after: Option[Int] = None, timeout: Option[Int] = None)(implicit qWrites: Writer[Q, String], jsonReader: Reader[String, SearchResponse[JsonR]], sReader: Reader[String, JsonR], ec: ExecutionContext): Future[SearchResponse[JsonR]]
 
   /**
-    * The scroll search return a [[Publisher]] (see reactives streams) of result.
+    * The scroll search return a [[org.reactivestreams.Publisher]] (see reactives streams) of result.
     * All the result of the search are returned in an asynchronous stream.
     *
     * @param index      name of the index
@@ -347,7 +347,7 @@ trait Elastic[JsonR] {
     * @param jsonReader json string to json object conversion
     * @param ec         ExecutionContext for future execution
     * @tparam Q the query object type
-    * @return a [[Publisher]] (see reactive streams) of [[SearchResponse]]
+    * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.SearchResponse]]
     */
   def scrollSearch[Q](index: Seq[String], `type`: Seq[String], query: Q, scroll: String = "1m", size: Option[Int] = None)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]]
 
@@ -357,16 +357,16 @@ trait Elastic[JsonR] {
     *
     * @param index        name of the index
     * @param `type`       name of the type
-    * @param publisher    a [[Publisher]] (see reactive streams) of [[Bulk]]
+    * @param publisher    a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.Bulk]]
     * @param batchSize    the size of the packet of bulk operations to send to elastic
     * @param sWrites      json to string conversion
     * @param docWriter    document to json object conversion
-    * @param bulkOpWriter [[Bulk]] to json object conversion
+    * @param bulkOpWriter [[com.adelegue.elastic.client.api.Bulk]] to json object conversion
     * @param sReader      string to json object conversion
-    * @param bReader      json object to [[BulkResponse]] conversion
+    * @param bReader      json object to [[com.adelegue.elastic.client.api.BulkResponse]] conversion
     * @param ec           ExecutionContext for future execution
     * @tparam D the type of the document
-    * @return a [[Publisher]] (see reactive streams) of [[BulkResponse]]
+    * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.BulkResponse]]
     */
   def bulk[D](index: Option[String] = None, `type`: Option[String] = None, publisher: Publisher[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Publisher[BulkResponse[JsonR]]
 
@@ -397,10 +397,10 @@ trait Index[JsonR] {
     * @param writer      document to json object conversion
     * @param strWriter   json object to string conversion
     * @param sReader     string to json object conversion
-    * @param jsonReader  json object to [[IndexResponse]] conversion
+    * @param jsonReader  json object to [[com.adelegue.elastic.client.api.IndexResponse]] conversion
     * @param ec          ExecutionContext for future execution
     * @tparam D the type of the document
-    * @return a [[IndexResponse]]
+    * @return a [[com.adelegue.elastic.client.api.IndexResponse]]
     */
   def index[D](data: D, id: Option[String] = None, version: Option[Int] = None, versionType: Option[VersionType] = None, create: Boolean = false, routing: Option[String] = None, parent: Option[String] = None, refresh: Boolean = false, timeout: Option[String] = None, consistency: Option[Consistency] = None, detectNoop: Boolean = false)(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
@@ -421,10 +421,10 @@ trait Index[JsonR] {
     * @param writer      document to json object conversion
     * @param strWriter   json object to string conversion
     * @param sReader     string to json object conversion
-    * @param jsonReader  json object to [[IndexResponse]] conversion
+    * @param jsonReader  json object to [[com.adelegue.elastic.client.api.IndexResponse]] conversion
     * @param ec          ExecutionContext for future execution
     * @tparam D the type of the document
-    * @return a [[IndexResponse]]
+    * @return a [[com.adelegue.elastic.client.api.IndexResponse]]
     */
   def update[D](data: D, id: String, version: Option[Int] = None, versionType: Option[VersionType] = None, routing: Option[String] = None, parent: Option[String] = None, refresh: Boolean = false, timeout: Option[String] = None, consistency: Option[Consistency] = None, detectNoop: Boolean = false)(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] =
     index(data, Some(id), version = version, versionType = versionType, create = false, routing = routing, parent = parent, refresh = refresh, timeout = timeout, consistency = consistency, detectNoop = detectNoop)
@@ -446,10 +446,10 @@ trait Index[JsonR] {
     * @param writer      document to json object conversion
     * @param strWriter   json object to string conversion
     * @param sReader     string to json object conversion
-    * @param jsonReader  json object to [[IndexResponse]] conversion
+    * @param jsonReader  json object to [[com.adelegue.elastic.client.api.IndexResponse]] conversion
     * @param ec          ExecutionContext for future execution
     * @tparam D the type of the document
-    * @return a [[IndexResponse]]
+    * @return a [[com.adelegue.elastic.client.api.IndexResponse]]
     */
   def create[D](data: D, id: Option[String], version: Option[Int] = None, versionType: Option[VersionType] = None, routing: Option[String] = None, parent: Option[String] = None, refresh: Boolean = false, timeout: Option[String] = None, consistency: Option[Consistency] = None, detectNoop: Boolean = false)(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] =
     index(data, id, version = version, versionType = versionType, create = true, routing = routing, parent = parent, refresh = refresh, timeout = timeout, consistency = consistency, detectNoop = false)
@@ -459,12 +459,12 @@ trait Index[JsonR] {
     *
     * @param id         id of the document
     * @param routing    the routing key
-    * @param fields     a [[Seq]] of fields to filter the source
+    * @param fields     a [[scala.Seq]] of fields to filter the source
     * @param _source    if false, the source is ignored
     * @param sReader    string to json object conversion
-    * @param jsonReader json object to [[GetResponse]] conversion
+    * @param jsonReader json object to [[com.adelegue.elastic.client.api.GetResponse]] conversion
     * @param ec         ExecutionContext for future execution
-    * @return a [[GetResponse]]
+    * @return a [[com.adelegue.elastic.client.api.GetResponse]]
     */
   def get(id: String, routing: Option[String] = None, fields: Seq[String] = Seq(), _source: Boolean = true)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, GetResponse[JsonR]], ec: ExecutionContext): Future[GetResponse[JsonR]]
 
@@ -472,7 +472,7 @@ trait Index[JsonR] {
     * Delete index operation
     *
     * @param sReader    string to json object conversion
-    * @param jsonReader a json object to [[IndexOps]] conversion
+    * @param jsonReader a json object to [[com.adelegue.elastic.client.api.IndexOps]] conversion
     * @param ec         ExecutionContext for future execution
     * @return
     */
@@ -483,9 +483,9 @@ trait Index[JsonR] {
     *
     * @param id         of the document
     * @param sReader    string to json object conversion
-    * @param jsonReader json object to [[IndexResponse]] conversion
+    * @param jsonReader json object to [[com.adelegue.elastic.client.api.IndexResponse]] conversion
     * @param ec         ExecutionContext for future execution
-    * @return a [[IndexResponse]] object
+    * @return a [[com.adelegue.elastic.client.api.IndexResponse]] object
     */
   def delete(id: String)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
@@ -493,13 +493,13 @@ trait Index[JsonR] {
     * Multiple get operation
     * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-multi-get.html
     *
-    * @param request    multiple get request : [[MGets]]
+    * @param request    multiple get request : [[com.adelegue.elastic.client.api.MGets]]
     * @param sWriter    json to string conversion
-    * @param jsonWriter [[MGets]] to json object conversion
+    * @param jsonWriter [[com.adelegue.elastic.client.api.MGets]] to json object conversion
     * @param sReader    string to json object conversion
-    * @param jsonReader json object to [[MGetResponse]] conversion
+    * @param jsonReader json object to [[com.adelegue.elastic.client.api.MGetResponse]] conversion
     * @param ec         ExecutionContext for future execution
-    * @return a [[MGetResponse]] response
+    * @return a [[com.adelegue.elastic.client.api.MGetResponse]] response
     */
   def mget(request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]]
 
@@ -509,10 +509,10 @@ trait Index[JsonR] {
     * @param query      the search query object
     * @param qWrites    query to json object conversion
     * @param sReads     string to json object conversion
-    * @param jsonReader json object to [[SearchResponse]] conversion
+    * @param jsonReader json object to [[com.adelegue.elastic.client.api.SearchResponse]] conversion
     * @param ec         ExecutionContext for future execution
     * @tparam Q type of the query object
-    * @return a [[SearchResponse]]
+    * @return a [[com.adelegue.elastic.client.api.SearchResponse]]
     */
   def search[Q](query: Q)(implicit qWrites: Writer[Q, String], sReads: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]]
 
@@ -520,21 +520,21 @@ trait Index[JsonR] {
     * Bulk operation for the current index
     * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
     *
-    * @param publisher    a [[Publisher]] (see reactive streams) of [[Bulk]]
+    * @param publisher    a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.Bulk]]
     * @param batchSize    the size of the packet of bulk operations to send to elastic
     * @param sWrites      json to string conversion
     * @param docWriter    document to json object conversion
-    * @param bulkOpWriter [[Bulk]] to json object conversion
+    * @param bulkOpWriter [[com.adelegue.elastic.client.api.Bulk]] to json object conversion
     * @param sReader      string to json object conversion
-    * @param bReader      json object to [[BulkResponse]] conversion
+    * @param bReader      json object to [[com.adelegue.elastic.client.api.BulkResponse]] conversion
     * @param ec           ExecutionContext for future execution
     * @tparam D the type of the document
-    * @return a [[Publisher]] (see reactive streams) of [[BulkResponse]]
+    * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.BulkResponse]]
     */
   def bulk[D](publisher: Publisher[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Publisher[BulkResponse[JsonR]]
 
   /**
-    * The scroll search return a [[Publisher]] (see reactives streams) of result.
+    * The scroll search return a [[org.reactivestreams.Publisher]] (see reactives streams) of result.
     * All the result of the search are returned in an asynchronous stream.
     *
     * @param query      the query to execute
@@ -543,7 +543,7 @@ trait Index[JsonR] {
     * @param jsonReader json string to json object conversion
     * @param ec         ExecutionContext for future execution
     * @tparam Q the query object type
-    * @return a [[Publisher]] (see reactive streams) of [[SearchResponse]]
+    * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.SearchResponse]]
     */
   def scrollSearch[Q](query: Q, scroll: String = "1m", size: Option[Int] = None)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]]
 
@@ -608,7 +608,7 @@ trait Reader[In, Out] {
 }
 
 /**
-  * Helper to create [[Reader]] from function
+  * Helper to create [[com.adelegue.elastic.client.api.Reader]] from function
   */
 object Reader {
   def apply[In, Out](fn: In => Out) = new Reader[In, Out] {
@@ -627,7 +627,7 @@ trait Writer[In, Out] {
 }
 
 /**
-  * Helper to create [[Writer]] from function
+  * Helper to create [[com.adelegue.elastic.client.api.Writer]] from function
   */
 object Writer {
   def apply[In, Out](fn: In => Out) = new Writer[In, Out] {
@@ -720,7 +720,7 @@ case class IndexOps(acknowledged: Boolean) extends ESResponse
   * @param total      total of shards
   * @param failed     total of failed shards
   * @param successful total of successful shards
-  * @param failures   a [[Seq]] of errors as [[Json]] object representation
+  * @param failures   a [[scala.Seq]] of errors as [[Json]] object representation
   * @tparam Json the type of the json representation.
   */
 case class Shards[Json](total: Int, failed: Int, successful: Int, failures: Seq[Json]) extends ESResponse
@@ -757,7 +757,7 @@ case class GetResponse[Json](_index: String, _type: String, _id: String, _versio
 /**
   * MGet response
   *
-  * @param docs a [[Seq]] of get response
+  * @param docs a [[scala.Seq]] of get response
   * @tparam Json type of json representation
   */
 case class MGetResponse[Json](docs: Seq[GetResponse[Json]]) extends ESResponse {
