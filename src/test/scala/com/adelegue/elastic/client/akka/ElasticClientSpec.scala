@@ -94,7 +94,7 @@ class ElasticClientSpec extends Specification with JsonMatchers {
 
     "reading unknow index" in {
       await(client.getIndex("test").map(Json.stringify)) must throwA[EsException[JsValue]].like {
-        case e: EsException[JsValue] =>
+        case e: EsException[_] =>
           e.httpCode mustEqual 404
           e.getMessage must /("error") / ("type" -> "index_not_found_exception")
       }
@@ -357,7 +357,7 @@ class ElasticClientSpec extends Specification with JsonMatchers {
       }
 
       await(index.get("id").map(_.as[MonDocument])) must throwA[EsException[JsValue]].like {
-        case e: EsException[JsValue] =>
+        case e: EsException[_] =>
           e.httpCode mustEqual 404
       }
 
@@ -376,7 +376,7 @@ class ElasticClientSpec extends Specification with JsonMatchers {
       }
 
       await(index.create(document, Some("id"))) must throwA[EsException[JsValue]].like {
-        case e: EsException[JsValue] =>
+        case e: EsException[_] =>
           e.httpCode mustEqual 409
           e.getMessage must /("error") / ("type" -> "document_already_exists_exception")
       }
@@ -508,6 +508,76 @@ class ElasticClientSpec extends Specification with JsonMatchers {
 
       await(client.deleteIndex("test")) mustEqual IndexOps(true)
       await(client.verifyIndex("test")) mustEqual false
+    }
+
+    "create, read, verify, delete template" in {
+
+      await(client.verifyTemplate("template_1")) must be equalTo false
+
+      val templateDef = Json.parse(
+        """
+          |{
+          |  "template": "te*",
+          |  "settings": {
+          |    "number_of_shards": 1
+          |  },
+          |  "mappings": {
+          |    "type1": {
+          |      "_source": {
+          |        "enabled": false
+          |      },
+          |      "properties": {
+          |        "host_name": {
+          |          "type": "string",
+          |          "index": "not_analyzed"
+          |        },
+          |        "created_at": {
+          |          "type": "date",
+          |          "format": "EEE MMM dd HH:mm:ss Z YYYY"
+          |        }
+          |      }
+          |    }
+          |  }
+          |}
+        """.stripMargin)
+      await(client.putTemplate("template_1", templateDef)) must be equalTo IndexOps(true)
+      await(client.verifyTemplate("template_1")) must be equalTo true
+
+      val template1 = Json.parse(
+        """
+          |{
+          |  "template_1": {
+          |    "order": 0,
+          |    "template": "te*",
+          |    "settings": {
+          |      "index": {
+          |        "number_of_shards": "1"
+          |      }
+          |    },
+          |    "mappings": {
+          |      "type1": {
+          |        "_source": {
+          |          "enabled": false
+          |        },
+          |        "properties": {
+          |          "created_at": {
+          |            "format": "EEE MMM dd HH:mm:ss Z YYYY",
+          |            "type": "date"
+          |          },
+          |          "host_name": {
+          |            "index": "not_analyzed",
+          |            "type": "string"
+          |          }
+          |        }
+          |      }
+          |    },
+          |    "aliases": {}
+          |  }
+          |}
+        """.stripMargin)
+      await(client.getTemplate("template_1")) must be equalTo template1
+      await(client.deleteTemplate("template_1")) must be equalTo IndexOps(true)
+      await(client.verifyTemplate("template_1")) must be equalTo false
     }
 
     "bulk operation " in {
