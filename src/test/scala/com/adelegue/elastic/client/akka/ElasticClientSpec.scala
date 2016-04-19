@@ -27,7 +27,9 @@ class ElasticClientSpec extends Specification with JsonMatchers {
 
 
   case class MonDocument(name: String)
+
   case class Parent(name: String)
+
   case class Child(name: String)
 
   implicit val docFormat = Json.format[MonDocument]
@@ -49,11 +51,11 @@ class ElasticClientSpec extends Specification with JsonMatchers {
     def await[T](f: Future[T], duration: Duration = testDuration) = Await.result(f, duration)
 
     val client: ElasticClient[JsValue] = ElasticClientBuilder()
-                    .withHost("localhost")
-                    .withPort(10901)
-                    .withActorSystem(actorSystem)
-                    .withActorMaterializer(mat)
-                    .build()
+      .withHost("localhost")
+      .withPort(10901)
+      .withActorSystem(actorSystem)
+      .withActorMaterializer(mat)
+      .build()
 
     "verify index" in {
       await(client.verifyIndex("test")) mustEqual false
@@ -83,19 +85,19 @@ class ElasticClientSpec extends Specification with JsonMatchers {
       await(client.createIndex("test", Json.parse(jsonSettings))) mustEqual IndexOps(true)
       await(client.verifyIndex("test")) mustEqual true
       await(client.getIndex("test").map(Json.stringify)) must
-        / ("test") / "settings" / "index" / ("number_of_shards" -> 1) and
-        / ("test") / "mappings" / "type1" / "properties" / "field1" / ("type" -> "string") and
-        / ("test") / "mappings" / "type1" / "properties" / "field1" / ("index" -> "not_analyzed")
+        /("test") / "settings" / "index" / ("number_of_shards" -> 1) and
+        /("test") / "mappings" / "type1" / "properties" / "field1" / ("type" -> "string") and
+        /("test") / "mappings" / "type1" / "properties" / "field1" / ("index" -> "not_analyzed")
       await(client.deleteIndex("test")) mustEqual IndexOps(true)
       await(client.verifyIndex("test")) mustEqual false
     }
 
     "reading unknow index" in {
-        await(client.getIndex("test").map(Json.stringify)) must throwA[EsException[JsValue]].like {
-          case e: EsException[JsValue] =>
-            e.httpCode mustEqual 404
-            e.getMessage must / ("error") / ("type" -> "index_not_found_exception")
-        }
+      await(client.getIndex("test").map(Json.stringify)) must throwA[EsException[JsValue]].like {
+        case e: EsException[JsValue] =>
+          e.httpCode mustEqual 404
+          e.getMessage must /("error") / ("type" -> "index_not_found_exception")
+      }
     }
 
     "creating index and get mapping" in {
@@ -113,7 +115,8 @@ class ElasticClientSpec extends Specification with JsonMatchers {
           }
         """
       await(client.createIndex("test", Json.parse(jsonSettings))) mustEqual IndexOps(true)
-      await(client.getMapping("test", "type1")) mustEqual Json.parse("""
+      await(client.getMapping("test", "type1")) mustEqual Json.parse(
+        """
         {
           "test" : {
             "mappings" : {
@@ -149,7 +152,8 @@ class ElasticClientSpec extends Specification with JsonMatchers {
         """
       await(client.createIndex("test1", Json.parse(jsonSettings))) mustEqual IndexOps(true)
       await(client.createIndex("test2", Json.parse(jsonSettings))) mustEqual IndexOps(true)
-      await(client.getMappings(Seq("test1", "test2"), Seq("type1", "type2"))) mustEqual Json.parse("""
+      await(client.getMappings(Seq("test1", "test2"), Seq("type1", "type2"))) mustEqual Json.parse(
+        """
       {
         "test2": {
           "mappings": {
@@ -192,7 +196,7 @@ class ElasticClientSpec extends Specification with JsonMatchers {
           }
         }
       }
-      """)
+        """)
       await(client.deleteIndex("test1")) mustEqual IndexOps(true)
       await(client.verifyIndex("test1")) mustEqual false
       await(client.deleteIndex("test2")) mustEqual IndexOps(true)
@@ -220,9 +224,10 @@ class ElasticClientSpec extends Specification with JsonMatchers {
             "user_name": { "type": "string" }
           }
         }
-      """
+        """
       await(client.putMapping("twitter", "tweet", Json.parse(mappingUpdate))) mustEqual IndexOps(true)
-      await(client.getMapping("twitter", "tweet")) mustEqual Json.parse("""
+      await(client.getMapping("twitter", "tweet")) mustEqual Json.parse(
+        """
         {
           "twitter" : {
             "mappings" : {
@@ -277,8 +282,9 @@ class ElasticClientSpec extends Specification with JsonMatchers {
           |}
         """.stripMargin
       await(client.putMapping("my_index", "type_one", Json.parse(mappingUpdate))) must throwA[EsException[JsValue]]
-      await(client.putMapping("my_index", "type_one", Json.parse(mappingUpdate), update_all_types = true)) mustEqual  IndexOps(true)
-      await(client.getMapping("my_index", "type_one")) mustEqual Json.parse("""
+      await(client.putMapping("my_index", "type_one", Json.parse(mappingUpdate), update_all_types = true)) mustEqual IndexOps(true)
+      await(client.getMapping("my_index", "type_one")) mustEqual Json.parse(
+        """
         {
           "my_index" : {
             "mappings" : {
@@ -372,7 +378,7 @@ class ElasticClientSpec extends Specification with JsonMatchers {
       await(index.create(document, Some("id"))) must throwA[EsException[JsValue]].like {
         case e: EsException[JsValue] =>
           e.httpCode mustEqual 409
-          e.getMessage must / ("error") / ("type" -> "document_already_exists_exception")
+          e.getMessage must /("error") / ("type" -> "document_already_exists_exception")
       }
 
       await(client.deleteIndex("test")) mustEqual IndexOps(true)
@@ -385,7 +391,7 @@ class ElasticClientSpec extends Specification with JsonMatchers {
 
       val document = MonDocument("nom")
       await(index.index(document, Some("id"))) must beLike[IndexResponse[JsValue]] {
-        case indexResponse  =>
+        case indexResponse =>
           indexResponse._index must beSome("test")
       }
       await(index.get("id")) mustEqual GetResponse("test", "type", "id", 1, true, Json.toJson(document))
@@ -458,7 +464,7 @@ class ElasticClientSpec extends Specification with JsonMatchers {
 
       val document = MonDocument("nom")
       await(index.index(document, Some("id"))) must beLike[IndexResponse[JsValue]] {
-        case indexResponse  =>
+        case indexResponse =>
           indexResponse._index must beSome("test")
       }
 
@@ -485,12 +491,12 @@ class ElasticClientSpec extends Specification with JsonMatchers {
 
       val ids = (1 to 105).map(i => i.toString).toList
       val publisher: Publisher[Bulk[MonDocument]] = Source(ids)
-        .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))) )
+        .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))))
         .runWith(Sink.asPublisher(fanout = false))
-      
+
       val respPublisher: Publisher[BulkResponse[JsValue]] = client.bulk[MonDocument](publisher = publisher, batchSize = 10)
 
-      val res: Future[List[BulkResponse[JsValue]]] = Source.fromPublisher(respPublisher).runFold(List.empty[BulkResponse[JsValue]])( (acc, elt) => acc :+ elt )
+      val res: Future[List[BulkResponse[JsValue]]] = Source.fromPublisher(respPublisher).runFold(List.empty[BulkResponse[JsValue]])((acc, elt) => acc :+ elt)
       val result: List[BulkResponse[JsValue]] = await(res, Duration(1, TimeUnit.MINUTES))
       val allItems = result.flatMap(r => r.items).flatMap(i => i.index.toList).map(i => i._id)
       allItems mustEqual ids
@@ -513,13 +519,13 @@ class ElasticClientSpec extends Specification with JsonMatchers {
 
       val ids = (1 to 105).map(i => i.toString).toList
       val publisher: Publisher[Bulk[MonDocument]] = Source(ids)
-        .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))) )
+        .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))))
         .runWith(Sink.asPublisher(fanout = false))
 
       val respPublisher: Publisher[BulkResponse[JsValue]] = client.bulk[MonDocument](publisher = publisher, batchSize = 10)
 
       await(Source.fromPublisher(respPublisher)
-        .runFold(List.empty[BulkResponse[JsValue]])( (acc, elt) => acc :+ elt ))
+        .runFold(List.empty[BulkResponse[JsValue]])((acc, elt) => acc :+ elt))
         .flatMap(r => r.items)
         .flatMap(i => i.index.toList).map(i => i._id) mustEqual ids
 
@@ -530,8 +536,8 @@ class ElasticClientSpec extends Specification with JsonMatchers {
       //Sroll search
       val matchAllQuery = Json.obj("query" -> Json.obj("match_all" -> Json.obj()))
       await(Source.fromPublisher(client.scrollSearch(Seq("index"), Seq("type"), matchAllQuery, size = Some(10)))
-          .mapConcat[MonDocument](r => r.hitsAs[MonDocument].toList)
-          .runFold(List.empty[MonDocument])( (acc, elt) => acc :+ elt ), Duration(5, TimeUnit.MINUTES))
+        .mapConcat[MonDocument](r => r.hitsAs[MonDocument].toList)
+        .runFold(List.empty[MonDocument])((acc, elt) => acc :+ elt), Duration(5, TimeUnit.MINUTES))
         .size mustEqual 105
 
 

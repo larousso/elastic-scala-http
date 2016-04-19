@@ -6,6 +6,7 @@ import com.adelegue.elastic.client.api._
   * Created by adelegue on 12/04/2016.
   */
 object PlayJson {
+
   import play.api.libs.json._
   import play.api.libs.functional.syntax._
 
@@ -14,14 +15,14 @@ object PlayJson {
       (__ \ "failed").read[Int] and
       (__ \ "successful").read[Int] and
       (__ \ "failures").read[Seq[JsValue]].orElse(Reads.pure(Nil))
-    )(Shards.apply[JsValue] _)
+    ) (Shards.apply[JsValue] _)
 
   implicit val shardsWrites: Writes[Shards[JsValue]] = (
     (__ \ "total").write[Int] and
       (__ \ "failed").write[Int] and
       (__ \ "successful").write[Int] and
       (__ \ "failures").write[Seq[JsValue]]
-    )(unlift(Shards.unapply[JsValue]))
+    ) (unlift(Shards.unapply[JsValue]))
 
   private implicit val indexOpsFormat = Json.format[IndexOps]
 
@@ -31,22 +32,22 @@ object PlayJson {
       (__ \ "_id").format[String] ~
       (__ \ "_score").format[Float] ~
       (__ \ "_source").format[JsValue]
-    )(Hit.apply, unlift(Hit.unapply))
+      ) (Hit.apply, unlift(Hit.unapply))
 
   private implicit val hitsFormat: Format[Hits[JsValue]] =
     ((__ \ "total").format[Int] ~
       (__ \ "max_score").formatNullable[Float] ~
       (__ \ "hits").format[Seq[Hit[JsValue]]]
-    )(Hits.apply, unlift(Hits.unapply))
+      ) (Hits.apply, unlift(Hits.unapply))
 
   private implicit val searchResponseFormat: Format[SearchResponse[JsValue]] =
     ((__ \ "took").format[Int] ~
-     (__ \ "_shards").format[Shards[JsValue]] ~
-     (__ \ "timed_out").format[Boolean] ~
-     (__ \ "hits").format[Hits[JsValue]] ~
-     (__ \ "_scroll_id").formatNullable[String] ~
-     (__ \ "aggregation").formatNullable[JsValue]
-    )(SearchResponse.apply, unlift(SearchResponse.unapply))
+      (__ \ "_shards").format[Shards[JsValue]] ~
+      (__ \ "timed_out").format[Boolean] ~
+      (__ \ "hits").format[Hits[JsValue]] ~
+      (__ \ "_scroll_id").formatNullable[String] ~
+      (__ \ "aggregation").formatNullable[JsValue]
+      ) (SearchResponse.apply, unlift(SearchResponse.unapply))
 
   private implicit val getResponseFormats: Format[GetResponse[JsValue]] =
     ((__ \ "_index").format[String] ~
@@ -55,7 +56,7 @@ object PlayJson {
       (__ \ "_version").format[Int] ~
       (__ \ "found").format[Boolean] ~
       (__ \ "_source").format[JsValue]
-    )(GetResponse.apply, unlift(GetResponse.unapply))
+      ) (GetResponse.apply, unlift(GetResponse.unapply))
 
   private implicit val indexResponseFormat: Format[IndexResponse[JsValue]] =
     ((__ \ "_shards").format[Shards[JsValue]] ~
@@ -65,7 +66,7 @@ object PlayJson {
       (__ \ "_version").formatNullable[Int] ~
       (__ \ "created").formatNullable[Boolean] ~
       (__ \ "found").formatNullable[Boolean]
-    )(IndexResponse.apply, unlift(IndexResponse.unapply))
+      ) (IndexResponse.apply, unlift(IndexResponse.unapply))
 
   private implicit val bulkResultFormat: Format[BulkResult[JsValue]] =
     ((__ \ "_index").format[String] ~
@@ -73,20 +74,20 @@ object PlayJson {
       (__ \ "_id").format[String] ~
       (__ \ "_version").format[Int] ~
       (__ \ "_shards").format[Shards[JsValue]]
-    )(BulkResult.apply, unlift(BulkResult.unapply))
+      ) (BulkResult.apply, unlift(BulkResult.unapply))
 
   private implicit val bulkItemFormat: Format[BulkItem[JsValue]] =
     ((__ \ "index").formatNullable[BulkResult[JsValue]] ~
       (__ \ "delete").formatNullable[BulkResult[JsValue]] ~
       (__ \ "update").formatNullable[BulkResult[JsValue]] ~
       (__ \ "create").formatNullable[BulkResult[JsValue]]
-    )(BulkItem.apply, unlift(BulkItem.unapply))
+      ) (BulkItem.apply, unlift(BulkItem.unapply))
 
   private implicit val bulkResponseFormat: Format[BulkResponse[JsValue]] =
     ((__ \ "took").format[Int] ~
       (__ \ "errors").format[Boolean] ~
       (__ \ "items").format[Seq[BulkItem[JsValue]]]
-    )(BulkResponse.apply, unlift(BulkResponse.unapply))
+      ) (BulkResponse.apply, unlift(BulkResponse.unapply))
 
   private implicit val bulkOpDetailFormat = Json.format[BulkOpDetail]
 
@@ -95,7 +96,7 @@ object PlayJson {
   private implicit def bulkRequestFormat[D](implicit format: Format[D]): Format[Bulk[D]] =
     ((__ \ "operation").format[BulkOpType] ~
       (__ \ "source").formatNullable[D]
-    )(Bulk.apply, unlift(Bulk.unapply))
+      ) (Bulk.apply, unlift(Bulk.unapply))
 
   private implicit val scrollFormat = Json.format[Scroll]
 

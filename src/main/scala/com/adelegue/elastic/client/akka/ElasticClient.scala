@@ -111,17 +111,38 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   //TODO
   override def analyse[Q](query: Q)(implicit mWrites: Writer[Q, JsonR], jWrites: Writer[JsonR, String], sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
 
-  //TODO
-  override def getTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def getTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    val path = Path.Empty / "_template" / name
+    simpleRequest(path, HttpMethods.GET).map(sReader.read)
+  }
 
-  //TODO
-  override def verifyTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[Boolean] = notImplemented
+  override def verifyTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[Boolean] = {
+    http.singleRequest(request(Path.Empty / "_template" / name, HttpMethods.HEAD, None)).flatMap {
+      case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+        Future.successful(true)
+      case HttpResponse(StatusCodes.NotFound, headers, entity, _) =>
+        Future.successful(false)
+      case HttpResponse(code, _, entity, _) =>
+        entity.dataBytes
+          .map(_.utf8String)
+          .runFold("")((str, acc) => str + acc)
+          .flatMap(cause =>
+            Future.failed(new EsException[JsonR](sReader.read(cause), code.intValue(), cause))
+          )
+    }
+  }
 
-  //TODO
-  override def putTemplate[T](name: String, template: T)(implicit mWrites: Writer[T, JsonR], jWrites: Writer[JsonR, String], sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
 
-  //TODO
-  override def deleteTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def putTemplate[T](name: String, template: T)(implicit mWrites: Writer[T, JsonR], jWrites: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] = {
+    val path = Path.Empty / "_template" / name
+    val body = jWrites.write(mWrites.write(template))
+    simpleRequest(path, HttpMethods.PUT, Some(body)).map(sReader.read).map(jsonReader.read)
+  }
+
+  override def deleteTemplate(name: String)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] = {
+    val path = Path.Empty / "_template" / name
+    simpleRequest(path, HttpMethods.DELETE).map(sReader.read).map(jsonReader.read)
+  }
 
   //TODO
   override def stats(indexes: Seq[String], stats: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
@@ -194,9 +215,9 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
     val scrollRequest = Scroll(scroll, scroll_id)
     Source.fromFuture(simpleRequest(Path.Empty / "_search" / "scroll", HttpMethods.POST, Some(sWriter.write(jsonWriter.write(scrollRequest)))))
       .map(str => jsonReader.read(sReader.read(str)))
-      .flatMapConcat{ resp =>
+      .flatMapConcat { resp =>
         val single: Source[SearchResponse[JsonR], NotUsed] = Source.single(resp)
-        if(resp.hits.hits.isEmpty) {
+        if (resp.hits.hits.isEmpty) {
           single
         } else {
           single.merge(nextScroll(scroll_id, scroll))
@@ -207,11 +228,10 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   override def aggregation[Q](index: Seq[String], `type`: Seq[String], query: Q, from: Option[Int], size: Option[Int], search_type: Option[SearchType], request_cache: Boolean, terminate_after: Option[Int], timeout: Option[Int])(implicit qWrites: Writer[Q, String], respReads: Reader[String, SearchResponse[JsonR]], jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[SearchResponse[JsonR]] = notImplemented[SearchResponse[JsonR]]
 
 
-
   /**
     * Ops at index level
     *
-    * @param name name of the index
+    * @param name   name of the index
     * @param `type` type of the index
     * @return
     */
@@ -279,21 +299,21 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   }
 }
 
-class ElasticClientBuilder (
-  host: Option[String] = None,
-  port: Option[Int] = None,
-  actorMaterializer: Option[ActorMaterializer] = None,
-  actorSystem: Option[ActorSystem] = None) {
+class ElasticClientBuilder(
+                            host: Option[String] = None,
+                            port: Option[Int] = None,
+                            actorMaterializer: Option[ActorMaterializer] = None,
+                            actorSystem: Option[ActorSystem] = None) {
 
   def withHost(host: String) = new ElasticClientBuilder(Some(host), port, actorMaterializer, actorSystem)
 
   def withPort(port: Int) = new ElasticClientBuilder(host, Some(port), actorMaterializer, actorSystem)
 
-  def withActorMaterializer(actorMaterializer: ActorMaterializer)()  = new ElasticClientBuilder(host, port, Some(actorMaterializer), actorSystem)
+  def withActorMaterializer(actorMaterializer: ActorMaterializer)() = new ElasticClientBuilder(host, port, Some(actorMaterializer), actorSystem)
 
   def withActorSystem(actorSystem: ActorSystem) = new ElasticClientBuilder(host, port, actorMaterializer, Some(actorSystem))
 
-  def build[JsonR]() : ElasticClient[JsonR] = {
+  def build[JsonR](): ElasticClient[JsonR] = {
     implicit val actorSys = actorSystem.getOrElse(ActorSystem("ElasticClient"))
     new ElasticClient[JsonR](host.getOrElse("localhost"), port.getOrElse(9200), actorMaterializer.getOrElse(ActorMaterializer()), actorSys)
   }
