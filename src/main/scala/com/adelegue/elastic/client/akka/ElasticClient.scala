@@ -176,6 +176,11 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   //TODO
   override def recovery(indexes: Seq[String], detailed: Boolean, active_only: Boolean)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
 
+  override def mget(index: Option[String] = None, `type`: Option[String] = None, request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]] = {
+    val indexPath = index.map(i => Path.Empty / i).map(p => `type`.map(t => p / t).getOrElse(p)).getOrElse(Path.Empty)
+    val body = Some(sWriter.write(jsonWriter.write(request)))
+    simpleRequest(indexPath / "_mget", HttpMethods.GET, body).map(sReader.read).map(jsonReader.read)
+  }
 
   override def search[Q](index: Seq[String], `type`: Seq[String], query: Q, from: Option[Int], size: Option[Int], search_type: Option[SearchType], request_cache: Boolean, terminate_after: Option[Int], timeout: Option[Int])(implicit qWrites: Writer[Q, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]] = {
     val indexPath: Path = if (index.isEmpty) Path./ else Path.Empty / index.mkString(",")
@@ -280,9 +285,8 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
       simpleRequest(indexPath / id, HttpMethods.DELETE, None).map(str => jsonReader.read(sReader.read(str)))
     }
 
-    override def mget(id: String)(implicit reads: Reader[String, GetResponse[JsonR]], jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[GetResponse[JsonR]] = {
-      Future.failed(new RuntimeException("Unimplemented"))
-    }
+    override def mget(request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]] =
+      _this.mget(Some(name), `type`, request)(sWriter, jsonWriter, sReader, jsonReader, ec)
 
     override def search[Q](query: Q)(implicit qWrites: Writer[Q, String], sReads: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]] =
       _this.search[Q](Seq(name), `type`.toList, query)(qWrites, sReads, jsonReader, ec)

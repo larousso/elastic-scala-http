@@ -275,6 +275,22 @@ trait Elastic[JsonR] {
   def upgradeStatus(index: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
   /**
+    * Multiple get operation
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-multi-get.html
+    *
+    * @param index      the name of the index
+    * @param `type`     the name of the type
+    * @param request    multiple get request : [[MGets]]
+    * @param sWriter    json to string conversion
+    * @param jsonWriter [[MGets]] to json object conversion
+    * @param sReader    string to json object conversion
+    * @param jsonReader json object to [[MGetResponse]] conversion
+    * @param ec         ExecutionContext for future execution
+    * @return a [[MGetResponse]] response
+    */
+  def mget(index: Option[String] = None, `type`: Option[String] = None, request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]]
+
+  /**
     * Search operation
     * see https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-body.html
     *
@@ -474,15 +490,18 @@ trait Index[JsonR] {
   def delete(id: String)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
   /**
-    * multiple get operation
+    * Multiple get operation
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-multi-get.html
     *
-    * @param id
-    * @param respReader
-    * @param jsonReader
-    * @param ec ExecutionContext for future execution
-    * @return
+    * @param request    multiple get request : [[MGets]]
+    * @param sWriter    json to string conversion
+    * @param jsonWriter [[MGets]] to json object conversion
+    * @param sReader    string to json object conversion
+    * @param jsonReader json object to [[MGetResponse]] conversion
+    * @param ec         ExecutionContext for future execution
+    * @return a [[MGetResponse]] response
     */
-  def mget(id: String)(implicit respReader: Reader[String, GetResponse[JsonR]], jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[GetResponse[JsonR]]
+  def mget(request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]]
 
   /**
     * Search operation on this index.
@@ -668,6 +687,22 @@ case class Bulk[D](operation: BulkOpType, source: Option[D]) extends ESRequest
 case class Scroll(scroll: String, scroll_id: String) extends ESRequest
 
 /**
+  * MGet request detail
+  *
+  * @param _index the name of the index
+  * @param _type  the name of the type
+  * @param _id    the id of the document
+  */
+case class MGet(_index: Option[String], _type: Option[String], _id: String) extends ESRequest
+
+/**
+  * MGet request.
+  *
+  * @param docs
+  */
+case class MGets(docs: MGet *) extends ESRequest
+
+/**
   * trait for elastic responses
   */
 trait ESResponse
@@ -717,6 +752,16 @@ case class IndexResponse[Json](_shards: Shards[Json], _index: Option[String], _t
   */
 case class GetResponse[Json](_index: String, _type: String, _id: String, _version: Int, found: Boolean, _source: Json) extends ESResponse {
   def as[Document](implicit reads: Reader[Json, Document]): Document = reads.read(_source)
+}
+
+/**
+  * MGet response
+  *
+  * @param docs a [[Seq]] of get response
+  * @tparam Json type of json representation
+  */
+case class MGetResponse[Json](docs: Seq[GetResponse[Json]]) extends ESResponse {
+  def docsAs[D](implicit reader: Reader[Json, D]):Seq[D]  = docs.map(_._source).map(reader.read)
 }
 
 /**
@@ -784,4 +829,3 @@ case class BulkItem[Json](index: Option[BulkResult[Json]], delete: Option[BulkRe
   * @tparam Json
   */
 case class BulkResponse[Json](took: Int, errors: Boolean, items: Seq[BulkItem[Json]]) extends ESResponse
-

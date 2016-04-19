@@ -487,6 +487,29 @@ class ElasticClientSpec extends Specification with JsonMatchers {
       await(client.verifyIndex("test")) mustEqual false
     }
 
+    "mget " in {
+      val index: Index[JsValue] = client.index("test", Some("type"))
+
+      val document1 = MonDocument("nom")
+      await(index.index(document1, Some("1"))) must beLike[IndexResponse[JsValue]] {
+        case indexResponse =>
+          indexResponse._index must beSome("test")
+      }
+      val document2 = MonDocument("nom")
+      await(index.index(document2, Some("2"))) must beLike[IndexResponse[JsValue]] {
+        case indexResponse =>
+          indexResponse._index must beSome("test")
+      }
+
+      val response = await(client.mget(request = MGets(MGet(Some("test"), Some("type"), "1"), MGet(Some("test"), Some("type"), "1"))))
+      response.docs.size mustEqual 2
+
+      response.docsAs[MonDocument] mustEqual Seq(document1, document2)
+
+      await(client.deleteIndex("test")) mustEqual IndexOps(true)
+      await(client.verifyIndex("test")) mustEqual false
+    }
+
     "bulk operation " in {
 
       val ids = (1 to 105).map(i => i.toString).toList

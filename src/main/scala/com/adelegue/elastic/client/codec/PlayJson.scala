@@ -58,6 +58,15 @@ object PlayJson {
       (__ \ "_source").format[JsValue]
       ) (GetResponse.apply, unlift(GetResponse.unapply))
 
+  private implicit val mGetFormat = Json.format[MGet]
+
+  private implicit val mGetsFormat = Json.format[MGets]
+
+  private implicit val mGetResponseFormat = Reads[MGetResponse[JsValue]] {
+    case json: JsObject => JsSuccess(MGetResponse( (json \ "docs").as[Seq[GetResponse[JsValue]]]) )
+    case _ => JsError("wrong type")
+  }
+
   private implicit val indexResponseFormat: Format[IndexResponse[JsValue]] =
     ((__ \ "_shards").format[Shards[JsValue]] ~
       (__ \ "_index").formatNullable[String] ~
@@ -100,21 +109,31 @@ object PlayJson {
 
   private implicit val scrollFormat = Json.format[Scroll]
 
-
-  implicit val strJsValueReads = Reader[String, JsValue] { str =>
-    Json.parse(str)
-  }
-
   implicit val strJsValueWrites = Writer[JsValue, String] { json =>
     Json.stringify(json)
   }
 
-  implicit val strJsObjectReads = Reader[String, JsObject] { str =>
-    Json.parse(str).as[JsObject]
-  }
-
   implicit val strJsObjectWrites = Writer[JsObject, String] { json =>
     Json.stringify(json)
+  }
+  implicit val strJsValueReads = Reader[String, JsValue] { str =>
+    Json.parse(str)
+  }
+
+  implicit val bulkOpTypeWrites = Writer[BulkOpType, JsValue] { b =>
+    Json.toJson(b)
+  }
+
+  implicit val mgetsWrites = Writer[MGets, JsValue] { mget =>
+    Json.toJson(mget)
+  }
+
+  implicit val scrollWriter = Writer[Scroll, JsValue] { scroll =>
+    Json.toJson(scroll)
+  }
+
+  implicit val strJsObjectReads = Reader[String, JsObject] { str =>
+    Json.parse(str).as[JsObject]
   }
 
   implicit val indexOpsReads = Reader[JsValue, IndexOps] { json =>
@@ -145,12 +164,8 @@ object PlayJson {
     json.as[BulkResponse[JsValue]]
   }
 
-  implicit val bulkOpTypeWrites = Writer[BulkOpType, JsValue] { b =>
-    Json.toJson(b)
-  }
-
-  implicit val scrollWriter = Writer[Scroll, JsValue] { scroll =>
-    Json.toJson(scroll)
+  implicit val mGetResponseReads = Reader[JsValue, MGetResponse[JsValue]] { json =>
+    json.as[MGetResponse[JsValue]]
   }
 
   implicit def genericStringReader[D](implicit reads: Reads[D]) = Reader[String, D] { json =>
