@@ -222,4 +222,4 @@ Scroll search
 
 #TODO
  
-analyse, template, stats, merge, flush, shard stores, upgrade. 
+msearch  

@@ -638,7 +638,134 @@ class ElasticClientSpec extends Specification with JsonMatchers {
       await(client.verifyIndex("index")) mustEqual false
     }
 
+    "flush" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
 
+      await(client.flush(Seq("index"))) must be equalTo IndexResponse(_shards = Shards[JsValue](2, 0, 1, Seq()))
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
+    "analyse" in {
+      await(client.analyse(query = Json.parse("""{ "analyzer" : "standard", "text" : "this is a test" }"""))) must be equalTo Json.parse(
+        """
+          |{
+          |   "tokens": [
+          |      {
+          |         "token": "this",
+          |         "start_offset": 0,
+          |         "end_offset": 4,
+          |         "type": "<ALPHANUM>",
+          |         "position": 0
+          |      },
+          |      {
+          |         "token": "is",
+          |         "start_offset": 5,
+          |         "end_offset": 7,
+          |         "type": "<ALPHANUM>",
+          |         "position": 1
+          |      },
+          |      {
+          |         "token": "a",
+          |         "start_offset": 8,
+          |         "end_offset": 9,
+          |         "type": "<ALPHANUM>",
+          |         "position": 2
+          |      },
+          |      {
+          |         "token": "test",
+          |         "start_offset": 10,
+          |         "end_offset": 14,
+          |         "type": "<ALPHANUM>",
+          |         "position": 3
+          |      }
+          |   ]
+          |}
+        """.stripMargin)
+    }
+
+    "forcemerge" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
+
+      await(client.forceMerge(Seq.empty[String])) must be equalTo IndexResponse(_shards = Shards[JsValue](2, 0, 1, Seq()))
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
+    "shard stores" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
+
+      await(client.shardStores(Seq("index"))) must not be empty
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
+    "upgrade" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
+
+      await(client.upgrade("index")) must not be empty
+      await(client.upgradeStatus("index")) must not be empty
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
+    "recovery" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
+
+      await(client.recovery(Seq("index"))) must not be empty
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
+    "segments" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
+
+      await(client.segments(Seq("index"))) must not be empty
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
+    "clear cache" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
+
+      await(client.clearCache(Seq("index"))) must not be empty
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
+    "refresh" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
+
+      await(client.refresh(Seq("index"))) must not be empty
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
+    "stats" in {
+      val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """
+      await(client.createIndex("index", Json.parse(jsonSettings))) mustEqual IndexOps(true)
+
+      await(client.stats(Seq("index"))) must not be empty
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
   }
 
   step {

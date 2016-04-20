@@ -28,13 +28,13 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
 
   def notImplemented[T] = Future.failed[T](new RuntimeException("Unimplemented"))
 
-  def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None): HttpRequest = {
+  def buildRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None): HttpRequest = {
     val uri: Uri = query.fold(baseUri.withPath(path))(baseUri.withPath(path).withQuery)
     HttpRequest(method, uri, entity = body.fold(HttpEntity.Empty)(HttpEntity.apply))
   }
 
-  def simpleRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
-    http.singleRequest(request(path, method, body, query)).flatMap {
+  def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
+    http.singleRequest(buildRequest(path, method, body, query)).flatMap {
       case HttpResponse(code, _, entity, _) if code == StatusCodes.OK || code == StatusCodes.Created =>
         entity.dataBytes.map(_.utf8String).runFold("")((str, acc) => str + acc)
       case HttpResponse(code, _, entity, _) =>
@@ -46,6 +46,18 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
           )
     }
   }
+
+  def get(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+    request(path, HttpMethods.GET, body, query)
+
+  def post(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+    request(path, HttpMethods.POST, body, query)
+
+  def put(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+    request(path, HttpMethods.PUT, body, query)
+
+  def delete(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+    request(path, HttpMethods.DELETE, body, query)
 
   private def indexPath(names: Seq[String], types: Seq[String]) = names match {
     case Nil | Seq() => Path.Empty / "*" ++ toPath(types)
@@ -59,7 +71,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
 
 
   override def verifyIndex(name: String)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[Boolean] = {
-    http.singleRequest(request(Path.Empty / name, HttpMethods.HEAD, None)).flatMap {
+    http.singleRequest(buildRequest(Path.Empty / name, HttpMethods.HEAD, None)).flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
         Future.successful(true)
       case HttpResponse(StatusCodes.NotFound, headers, entity, _) =>
@@ -76,26 +88,26 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
 
   override def createIndex[S](name: String, settings: S)(implicit mWrites: Writer[S, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] = {
     val strSettings = mWrites.write(settings)
-    simpleRequest(Path.Empty / name, HttpMethods.PUT, Some(strSettings)).map(str => jsonReader.read(sReader.read(str)))
+    put(Path.Empty / name, Some(strSettings)).map(str => jsonReader.read(sReader.read(str)))
   }
 
   override def getIndex(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
-    simpleRequest(Path.Empty / name, HttpMethods.GET, None).map(str => sReader.read(str))
+    get(Path.Empty / name, None).map(str => sReader.read(str))
   }
 
   override def deleteIndex(name: String, `type`: Option[String])(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] = {
-    simpleRequest(indexPath(Seq(name), `type`.toList), HttpMethods.DELETE, None).map(str => jsonReader.read(sReader.read(str)))
+    delete(indexPath(Seq(name), `type`.toList), None).map(str => jsonReader.read(sReader.read(str)))
   }
 
   override def createAliases[S](settings: S)(implicit mWrites: Writer[S, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] = {
     val strSettings = mWrites.write(settings)
-    simpleRequest(Path.Empty / "_aliases", HttpMethods.POST, Some(strSettings)).map(str => jsonReader.read(sReader.read(str)))
+    post(Path.Empty / "_aliases", Some(strSettings)).map(str => jsonReader.read(sReader.read(str)))
   }
 
   override def putMapping[M](name: String, `type`: String, mapping: M, update_all_types: Boolean)(implicit mWrites: Writer[M, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] = {
     val strMapping = mWrites.write(mapping)
     val query: Option[Query] = Some(update_all_types).filter(_.booleanValue).map(_ => Query("update_all_types"))
-    simpleRequest(Path.Empty / name / "_mapping" / `type`, HttpMethods.PUT, Some(strMapping), query).map(str => jsonReader.read(sReader.read(str)))
+    put(Path.Empty / name / "_mapping" / `type`, Some(strMapping), query).map(str => jsonReader.read(sReader.read(str)))
   }
 
   override def getMapping(index: String, `type`: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
@@ -105,19 +117,21 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   override def getMappings(index: Seq[String], `type`: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
     val indexPath: Path = if (index.isEmpty) Path./ else Path.Empty / index.mkString(",")
     val typePath = if (`type`.isEmpty) "" else `type`.mkString(",")
-    simpleRequest(indexPath / "_mapping" / typePath, HttpMethods.GET, None).map(str => sReader.read(str))
+    get(indexPath / "_mapping" / typePath).map(str => sReader.read(str))
   }
 
-  //TODO
-  override def analyse[Q](query: Q)(implicit mWrites: Writer[Q, JsonR], jWrites: Writer[JsonR, String], sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def analyse[Q](index: Option[String], query: Q)(implicit mWrites: Writer[Q, JsonR], jWrites: Writer[JsonR, String], sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    val path = index.map(i => Path.Empty / i / "_analyze").getOrElse(Path.Empty / "_analyze")
+    get(path, Some(jWrites.write(mWrites.write(query)))).map(sReader.read)
+  }
 
   override def getTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
     val path = Path.Empty / "_template" / name
-    simpleRequest(path, HttpMethods.GET).map(sReader.read)
+    get(path).map(sReader.read)
   }
 
   override def verifyTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[Boolean] = {
-    http.singleRequest(request(Path.Empty / "_template" / name, HttpMethods.HEAD, None)).flatMap {
+    http.singleRequest(buildRequest(Path.Empty / "_template" / name, HttpMethods.HEAD, None)).flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
         Future.successful(true)
       case HttpResponse(StatusCodes.NotFound, headers, entity, _) =>
@@ -136,56 +150,81 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   override def putTemplate[T](name: String, template: T)(implicit mWrites: Writer[T, JsonR], jWrites: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] = {
     val path = Path.Empty / "_template" / name
     val body = jWrites.write(mWrites.write(template))
-    simpleRequest(path, HttpMethods.PUT, Some(body)).map(sReader.read).map(jsonReader.read)
+    put(path, Some(body)).map(sReader.read).map(jsonReader.read)
   }
 
   override def deleteTemplate(name: String)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] = {
     val path = Path.Empty / "_template" / name
-    simpleRequest(path, HttpMethods.DELETE).map(sReader.read).map(jsonReader.read)
+    delete(path).map(sReader.read).map(jsonReader.read)
   }
 
-  //TODO
-  override def stats(indexes: Seq[String], stats: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def stats(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    get(Path.Empty / indexes.mkString(",") / "_stats").map(sReader.read)
+  }
 
-  //TODO
-  override def forceMerge(indexes: Seq[String], max_num_segments: Option[Int], only_expunge_deletes: Boolean, flush: Boolean)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def forceMerge(indexes: Seq[String], max_num_segments: Option[Int], only_expunge_deletes: Boolean, flush: Boolean)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
+    val query = Some(Query(Seq(
+      max_num_segments.map(n => "max_num_segments" -> n.toString),
+      Some(only_expunge_deletes).filter(_.booleanValue).map(_ => "only_expunge_deletes" -> "true"),
+      Some(flush).filterNot(_.booleanValue).map(_ => "flush" -> "true")
+    ).flatten: _*))
+    val path: Path = Path.Empty / indexes.mkString(",") / "_forcemerge"
+    post(path, query = query).map(sReader.read).map(jsonReader.read)
+  }
 
-  //TODO
-  override def shardStores(indexes: Seq[String], status: Option[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def shardStores(indexes: Seq[String], status: Option[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    val path = Path.Empty / indexes.mkString(",") / "_shard_stores"
+    get(path).map(sReader.read)
+  }
 
-  //TODO
-  override def upgradeStatus(index: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def upgradeStatus(index: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    val path = Path.Empty / index / "_upgrade"
+    get(path).map(sReader.read)
+  }
 
-  //TODO
-  override def flush(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def upgrade(index: String, only_ancient_segments: Boolean)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    val path = Path.Empty / index / "_upgrade"
+    post(path, query = Some(Query("only_ancient_segments" -> only_ancient_segments.toString))).map(sReader.read)
+  }
 
+  override def flush(indexes: Seq[String], wait_if_ongoing: Boolean = false, force: Boolean = false)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
+    val query = Some(Query(Seq(
+      Some(wait_if_ongoing).filter(_.booleanValue).map(_ => "wait_if_ongoing" -> "true"),
+      Some(force).filter(_.booleanValue).map(_ => "force" -> "true")
+    ).flatten: _*))
+    post(Path.Empty / indexes.mkString(",") / "_flush", query = query).map(sReader.read).map(jsonReader.read)
+  }
 
   override def refresh(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
-    simpleRequest(indexPath(indexes, Seq()) / "_refresh", HttpMethods.POST).map(s => jsonReader.read(sReader.read(s)))
+    post(indexPath(indexes, Seq()) / "_refresh").map(s => jsonReader.read(sReader.read(s)))
   }
 
-  //TODO
-  override def upgrade(index: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def segments(indexes: Seq[String], verbose: Boolean)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    get(Path.Empty / indexes.mkString(",") / "_segments", query = Some(Query("verbose" -> verbose.toString))).map(sReader.read)
+  }
 
-  //TODO
-  override def segments(indexes: Seq[String], verbose: Boolean)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def clearCache(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    get(Path.Empty / indexes.mkString(",") / "_cache" / "clear").map(sReader.read)
+  }
 
-  //TODO
-  override def clearCache(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
-
-  //TODO
-  override def recovery(indexes: Seq[String], detailed: Boolean, active_only: Boolean)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = notImplemented
+  override def recovery(indexes: Seq[String], detailed: Boolean, active_only: Boolean)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] = {
+    val query = Some(Query(
+      "detailed" -> detailed.toString,
+      "active_only" -> active_only.toString
+    ))
+    get(Path.Empty / indexes.mkString(",") / "_recovery", query = query).map(sReader.read)
+  }
 
   override def mget(index: Option[String] = None, `type`: Option[String] = None, request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]] = {
     val indexPath = index.map(i => Path.Empty / i).map(p => `type`.map(t => p / t).getOrElse(p)).getOrElse(Path.Empty)
     val body = Some(sWriter.write(jsonWriter.write(request)))
-    simpleRequest(indexPath / "_mget", HttpMethods.GET, body).map(sReader.read).map(jsonReader.read)
+    get(indexPath / "_mget", body).map(sReader.read).map(jsonReader.read)
   }
 
   override def search[Q](index: Seq[String], `type`: Seq[String], query: Q, from: Option[Int], size: Option[Int], search_type: Option[SearchType], request_cache: Boolean, terminate_after: Option[Int], timeout: Option[Int])(implicit qWrites: Writer[Q, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]] = {
     val indexPath: Path = if (index.isEmpty) Path./ else Path.Empty / index.mkString(",")
     val typePath = if (`type`.isEmpty) "" else `type`.mkString(",")
-    simpleRequest(indexPath / typePath / "_search", HttpMethods.GET, Some(qWrites.write(query))).map(str => jsonReader.read(sReader.read(str)))
+    get(indexPath / typePath / "_search", Some(qWrites.write(query))).map(str => jsonReader.read(sReader.read(str)))
   }
 
   override def bulk[D](index: Option[String], `type`: Option[String], publisher: Publisher[Bulk[D]], batchSize: Int)(implicit qWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Publisher[BulkResponse[JsonR]] = {
@@ -194,7 +233,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
       .grouped(batchSize)
       .mapAsync(1) { group =>
         val body: String = group.flatMap(b => Seq(Some(bulkOpWriter.write(b.operation)), b.source.map(docWriter.write)).flatten).map(qWrites.write).mkString("\n") + "\n"
-        simpleRequest(indexPath.getOrElse(Path.Empty) / "_bulk", HttpMethods.POST, Some(body)).map(str => bReader.read(sReader.read(str)))
+        post(indexPath.getOrElse(Path.Empty) / "_bulk", Some(body)).map(str => bReader.read(sReader.read(str)))
       }
       .runWith(Sink.asPublisher(fanout = true))
   }
@@ -207,7 +246,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
     ).flatten
 
     Source
-      .fromFuture(simpleRequest(path / "_search", HttpMethods.GET, Some(qWrites.write(query)), Some(Query(querys: _*))))
+      .fromFuture(request(path / "_search", HttpMethods.GET, Some(qWrites.write(query)), Some(Query(querys: _*))))
       .map(str => jsonReader.read(sReader.read(str)))
       .flatMapConcat { resp =>
         val Some(scroll_id) = resp.scroll_id
@@ -218,7 +257,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
 
   private def nextScroll(scroll_id: String, scroll: String)(implicit jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Source[SearchResponse[JsonR], NotUsed] = {
     val scrollRequest = Scroll(scroll, scroll_id)
-    Source.fromFuture(simpleRequest(Path.Empty / "_search" / "scroll", HttpMethods.POST, Some(sWriter.write(jsonWriter.write(scrollRequest)))))
+    Source.fromFuture(post(Path.Empty / "_search" / "scroll", Some(sWriter.write(jsonWriter.write(scrollRequest)))))
       .map(str => jsonReader.read(sReader.read(str)))
       .flatMapConcat { resp =>
         val single: Source[SearchResponse[JsonR], NotUsed] = Source.single(resp)
@@ -253,7 +292,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
         routing.map(r => "routing" -> r)
       ).flatten
       val query: Option[Query] = if (querys.isEmpty) None else Some(Query(querys: _*))
-      simpleRequest(indexPath / id, HttpMethods.GET, None, query).map(str => jsonReader.read(sReader.read(str)))
+      _this.get(indexPath / id, None, query).map(str => jsonReader.read(sReader.read(str)))
     }
 
     override def index[D](data: D, id: Option[String], version: Option[Int], versionType: Option[VersionType], create: Boolean, routing: Option[String], parent: Option[String], refresh: Boolean, timeout: Option[String], consistency: Option[Consistency], detectNoop: Boolean)(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
@@ -272,17 +311,17 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
 
       id match {
         case Some(_id) if create =>
-          simpleRequest(indexPath / _id / "_create", HttpMethods.PUT, Some(strWriter.write(writer.write(data))), query).map(str => jsonReader.read(sReader.read(str)))
+          put(indexPath / _id / "_create", Some(strWriter.write(writer.write(data))), query).map(str => jsonReader.read(sReader.read(str)))
         case Some(_id) =>
-          simpleRequest(indexPath / _id, HttpMethods.PUT, Some(strWriter.write(writer.write(data))), query).map(str => jsonReader.read(sReader.read(str)))
+          put(indexPath / _id, Some(strWriter.write(writer.write(data))), query).map(str => jsonReader.read(sReader.read(str)))
         case None =>
-          simpleRequest(indexPath, HttpMethods.POST, Some(strWriter.write(writer.write(data))), query).map(str => jsonReader.read(sReader.read(str)))
+          post(indexPath, Some(strWriter.write(writer.write(data))), query).map(str => jsonReader.read(sReader.read(str)))
       }
     }
 
     override def delete(id: String)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
       if (`type`.isEmpty) throw new IllegalArgumentException("type is required to delete document")
-      simpleRequest(indexPath / id, HttpMethods.DELETE, None).map(str => jsonReader.read(sReader.read(str)))
+      _this.delete(indexPath / id).map(str => jsonReader.read(sReader.read(str)))
     }
 
     override def mget(request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]] =

@@ -128,7 +128,7 @@ trait Elastic[JsonR] {
     * @tparam Q query type
     * @return Json object
     */
-  def analyse[Q](query: Q)(implicit qWrites: Writer[Q, JsonR], jWrites: Writer[JsonR, String], sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def analyse[Q](index: Option[String] = None, query: Q)(implicit qWrites: Writer[Q, JsonR], jWrites: Writer[JsonR, String], sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
   /**
     * Add template with name
@@ -177,100 +177,119 @@ trait Elastic[JsonR] {
   def verifyTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[Boolean]
 
   /**
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-stats.html
     *
-    * @param indexes
-    * @param stats
+    * @param indices the names of the indices
     * @param sReader json string to json object conversion
     * @param ec      ExecutionContext for future execution
     * @return
     */
-  def stats(indexes: Seq[String], stats: Seq[String] = Seq())(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def stats(indices: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
   /**
+    * read segments
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-segments.html
     *
-    * @param indexes
-    * @param verbose
+    * @param indices the names of the indices
+    * @param verbose verbose response if true
     * @param sReader json string to json object conversion
     * @param ec      ExecutionContext for future execution
-    * @return
+    * @return a json representation of the segments
     */
-  def segments(indexes: Seq[String], verbose: Boolean = false)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def segments(indices: Seq[String], verbose: Boolean = false)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
   /**
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-recovery.html
     *
-    * @param indexes
-    * @param detailed
-    * @param active_only
-    * @param sReader json string to json object conversion
-    * @param ec      ExecutionContext for future execution
-    * @return
+    * @param indices     name of the indices
+    * @param detailed    detailed option
+    * @param active_only active_only option
+    * @param sReader     json string to json object conversion
+    * @param ec          ExecutionContext for future execution
+    * @return a json representation of the response
     */
-  def recovery(indexes: Seq[String], detailed: Boolean = false, active_only: Boolean = false)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def recovery(indices: Seq[String], detailed: Boolean = false, active_only: Boolean = false)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
   /**
+    * Shard stores operation
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-shards-stores.html
     *
-    * @param indexes
-    * @param status
+    * @param indices the indices
+    * @param status  the status : green, yellow, red
     * @param sReader json string to json object conversion
     * @param ec      ExecutionContext for future execution
-    * @return
+    * @return a json object of the response
     */
-  def shardStores(indexes: Seq[String], status: Option[String] = None)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def shardStores(indices: Seq[String], status: Option[String] = None)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
   /**
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-clearcache.html
     *
-    * @param indexes
+    * @param indices the names of the indices
     * @param sReader json string to json object conversion
     * @param ec      ExecutionContext for future execution
-    * @return
+    * @return a json object of the response
     */
-  def clearCache(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def clearCache(indices: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
   /**
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-refresh.html
     *
-    * @param indexes
+    * @param indices the names of the indices
     * @param sReader json string to json object conversion
     * @param ec      ExecutionContext for future execution
-    * @return
+    * @return a json object of the response
     */
-  def refresh(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
+  def refresh(indices: Seq[String])(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
   /**
+    * Flush operation
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-flush.html
     *
-    * @param indexes
-    * @param sReader json string to json object conversion
-    * @param ec      ExecutionContext for future execution
-    * @return
+    * @param indices         a [[scala.Seq]] of indices names
+    * @param wait_if_ongoing If set to true the flush operation will block until the flush can be executed if another flush operation is already executing.
+    * @param force           Whether a flush should be forced even if it is not necessarily needed ie. if no changes will be committed to the index
+    * @param sReader         json string to json object conversion
+    * @param jsonReader      json object to [[com.adelegue.elastic.client.api.IndexResponse]] conversion
+    * @param ec              ExecutionContext for future execution
+    * @return a [[com.adelegue.elastic.client.api.IndexResponse]]
     */
-  def flush(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def flush(indices: Seq[String], wait_if_ongoing: Boolean = false, force: Boolean = false)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
   /**
+    * Force merge operation
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-forcemerge.html
     *
-    * @param indexes
-    * @param max_num_segments
-    * @param only_expunge_deletes
-    * @param flush
-    * @param sReader json string to json object conversion
-    * @param ec      ExecutionContext for future execution
-    * @return
+    * @param indices              indices
+    * @param max_num_segments     The number of segments to merge to
+    * @param only_expunge_deletes Should the merge process only expunge segments with deletes in it.
+    * @param flush                Should a flush be performed after the forced merge
+    * @param sReader              json string to json object conversion
+    * @param jsonReader           json object to [[com.adelegue.elastic.client.api.IndexResponse]] conversion
+    * @param ec                   ExecutionContext for future execution
+    * @return a [[com.adelegue.elastic.client.api.IndexResponse]] response
     */
-  def forceMerge(indexes: Seq[String], max_num_segments: Option[Int] = None, only_expunge_deletes: Boolean = false, flush: Boolean = false)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def forceMerge(indices: Seq[String] = Seq.empty[String], max_num_segments: Option[Int] = None, only_expunge_deletes: Boolean = false, flush: Boolean = true)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
   /**
+    * Upgrade operation
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-upgrade.html
     *
-    * @param index
+    * @param index   the name if the index
     * @param sReader json string to json object conversion
     * @param ec      ExecutionContext for future execution
-    * @return
+    * @return a json objet of the response
     */
-  def upgrade(index: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+  def upgrade(index: String, only_ancient_segments: Boolean = false)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
   /**
+    * Upgrade operation status
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-upgrade.html
     *
-    * @param index
+    * @param index   the name if the index
     * @param sReader json string to json object conversion
     * @param ec      ExecutionContext for future execution
-    * @return
+    * @return a json objet of the response
     */
   def upgradeStatus(index: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
@@ -700,7 +719,7 @@ case class MGet(_index: Option[String], _type: Option[String], _id: String) exte
   *
   * @param docs
   */
-case class MGets(docs: MGet *) extends ESRequest
+case class MGets(docs: MGet*) extends ESRequest
 
 /**
   * trait for elastic responses
@@ -737,7 +756,7 @@ case class Shards[Json](total: Int, failed: Int, successful: Int, failures: Seq[
   * @param found    true if found
   * @tparam Json the type of the json representation
   */
-case class IndexResponse[Json](_shards: Shards[Json], _index: Option[String], _type: Option[String], _id: Option[String], _version: Option[Int], created: Option[Boolean], found: Option[Boolean]) extends ESResponse
+case class IndexResponse[Json](_shards: Shards[Json], _index: Option[String] = None, _type: Option[String] = None, _id: Option[String] = None, _version: Option[Int] = None, created: Option[Boolean] = None, found: Option[Boolean] = None) extends ESResponse
 
 /**
   * Get response.
@@ -761,7 +780,7 @@ case class GetResponse[Json](_index: String, _type: String, _id: String, _versio
   * @tparam Json type of json representation
   */
 case class MGetResponse[Json](docs: Seq[GetResponse[Json]]) extends ESResponse {
-  def docsAs[D](implicit reader: Reader[Json, D]):Seq[D]  = docs.map(_._source).map(reader.read)
+  def docsAs[D](implicit reader: Reader[Json, D]): Seq[D] = docs.map(_._source).map(reader.read)
 }
 
 /**
