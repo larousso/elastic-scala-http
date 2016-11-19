@@ -6,7 +6,7 @@ import akka.http.scaladsl.{Http, HttpExt}
 import akka.http.scaladsl.model.Uri.{Path, Query}
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.{Flow, Sink, Source}
 import com.adelegue.elastic.client.api._
 import org.reactivestreams.Publisher
 
@@ -228,14 +228,20 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   }
 
   override def bulk[D](index: Option[String], `type`: Option[String], publisher: Publisher[Bulk[D]], batchSize: Int)(implicit qWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Publisher[BulkResponse[JsonR]] = {
-    val indexPath: Option[Path] = index.map(i => Path.Empty / i).map(p => `type`.map(t => p / t).getOrElse(p))
     Source.fromPublisher(publisher)
       .grouped(batchSize)
-      .mapAsync(1) { group =>
-        val body: String = group.flatMap(b => Seq(Some(bulkOpWriter.write(b.operation)), b.source.map(docWriter.write)).flatten).map(qWrites.write).mkString("\n") + "\n"
-        post(indexPath.getOrElse(Path.Empty) / "_bulk", Some(body)).map(str => bReader.read(sReader.read(str)))
-      }
+      .mapAsync(1) { group => oneBulk(index, `type`, group, batchSize)}
       .runWith(Sink.asPublisher(fanout = true))
+  }
+
+  override def bulkFlow[D](index: Option[String], `type`: Option[String], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Flow[Bulk[D], BulkResponse[JsonR], NotUsed] = {
+    Flow[Bulk[D]].grouped(batchSize).mapAsync(1) { group => oneBulk(index, `type`, group, batchSize)}
+  }
+
+  override def oneBulk[D](index: Option[String], `type`: Option[String], bulk: Seq[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]] = {
+    val indexPath: Option[Path] = index.map(i => Path.Empty / i).map(p => `type`.map(t => p / t).getOrElse(p))
+    val body: String = bulk.flatMap(b => Seq(Some(bulkOpWriter.write(b.operation)), b.source.map(docWriter.write)).flatten).map(sWrites.write).mkString("\n") + "\n"
+    post(indexPath.getOrElse(Path.Empty) / "_bulk", Some(body)).map(str => bReader.read(sReader.read(str)))
   }
 
   override def scrollSearch[Q](index: Seq[String], `type`: Seq[String], query: Q, scroll: String = "1m", size: Option[Int] = None)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]] = {
@@ -336,6 +342,12 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
 
     override def bulk[D](publisher: Publisher[Bulk[D]], batchSize: Int)(implicit qWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Publisher[BulkResponse[JsonR]] =
       _this.bulk(Some(name), `type`, publisher, batchSize)(qWrites, docWriter, bulkOpWriter, sReader, bReader, ec)
+
+    override def bulkFlow[D](batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Flow[Bulk[D], BulkResponse[JsonR], NotUsed] =
+      _this.bulkFlow(Some(name), `type`, batchSize)(sWrites, docWriter, bulkOpWriter, sReader, bReader, ec)
+
+    override def oneBulk[D](bulk: Seq[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]] =
+      _this.oneBulk(Some(name), `type`, bulk: Seq[Bulk[D]], batchSize)(sWrites, docWriter, bulkOpWriter, sReader, bReader, ec)
 
     override def scrollSearch[Q](query: Q, scroll: String, size: Option[Int])(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]] =
       _this.scrollSearch(Seq(name), `type`.toSeq, query, scroll, size)(qWrites, jsonWriter, sWriter, sReader, jsonReader, ec)

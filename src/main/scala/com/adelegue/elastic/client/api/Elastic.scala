@@ -1,5 +1,7 @@
 package com.adelegue.elastic.client.api
 
+import akka.NotUsed
+import akka.stream.scaladsl.Flow
 import org.reactivestreams.Publisher
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -389,6 +391,43 @@ trait Elastic[JsonR] {
     */
   def bulk[D](index: Option[String] = None, `type`: Option[String] = None, publisher: Publisher[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Publisher[BulkResponse[JsonR]]
 
+
+  /**
+    * A akka stream flow to bulk datas.
+    *
+    * @param index        name of the index
+    * @param `type`       name of the type
+    * @param batchSize    the size of the packet of bulk operations to send to elastic
+    * @param sWrites      json to string conversion
+    * @param docWriter    document to json object conversion
+    * @param bulkOpWriter [[com.adelegue.elastic.client.api.Bulk]] to json object conversion
+    * @param sReader      string to json object conversion
+    * @param bReader      json object to [[com.adelegue.elastic.client.api.BulkResponse]] conversion
+    * @param ec           ExecutionContext for future execution
+    * @tparam D the type of the document
+    * @return a [[akka.stream.scaladsl.Flow]] that ingest [[com.adelegue.elastic.client.api.Bulk]] and out [[com.adelegue.elastic.client.api.BulkResponse]]
+    */
+  def bulkFlow[D](index: Option[String] = None, `type`: Option[String] = None, batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Flow[Bulk[D], BulkResponse[JsonR], NotUsed]
+
+  /**
+    * A atomic bulk opération
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+    *
+    * @param index        name of the index
+    * @param `type`       name of the type
+    * @param bulk         a Seq of [[com.adelegue.elastic.client.api.Bulk]] to send in bulk
+    * @param batchSize    the size of the packet of bulk operations to send to elastic
+    * @param sWrites      json to string conversion
+    * @param docWriter    document to json object conversion
+    * @param bulkOpWriter [[com.adelegue.elastic.client.api.Bulk]] to json object conversion
+    * @param sReader      string to json object conversion
+    * @param bReader      json object to [[com.adelegue.elastic.client.api.BulkResponse]] conversion
+    * @param ec           ExecutionContext for future execution
+    * @tparam D the type of the document
+    * @return a [[com.adelegue.elastic.client.api.BulkResponse]]
+    */
+  def oneBulk[D](index: Option[String] = None, `type`: Option[String] = None, bulk: Seq[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]]
+
 }
 
 /**
@@ -551,6 +590,41 @@ trait Index[JsonR] {
     * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.BulkResponse]]
     */
   def bulk[D](publisher: Publisher[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Publisher[BulkResponse[JsonR]]
+
+
+
+  /**
+    * A akka stream flow to bulk datas.
+    *
+    * @param batchSize    the size of the packet of bulk operations to send to elastic
+    * @param sWrites      json to string conversion
+    * @param docWriter    document to json object conversion
+    * @param bulkOpWriter [[com.adelegue.elastic.client.api.Bulk]] to json object conversion
+    * @param sReader      string to json object conversion
+    * @param bReader      json object to [[com.adelegue.elastic.client.api.BulkResponse]] conversion
+    * @param ec           ExecutionContext for future execution
+    * @tparam D the type of the document
+    * @return a [[akka.stream.scaladsl.Flow]] that ingest [[com.adelegue.elastic.client.api.Bulk]] and out [[com.adelegue.elastic.client.api.BulkResponse]]
+    */
+  def bulkFlow[D](batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Flow[Bulk[D], BulkResponse[JsonR], NotUsed]
+
+  /**
+    * A atomic bulk opération
+    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+    *
+    * @param bulk         a Seq of [[com.adelegue.elastic.client.api.Bulk]] to send in bulk
+    * @param batchSize    the size of the packet of bulk operations to send to elastic
+    * @param sWrites      json to string conversion
+    * @param docWriter    document to json object conversion
+    * @param bulkOpWriter [[com.adelegue.elastic.client.api.Bulk]] to json object conversion
+    * @param sReader      string to json object conversion
+    * @param bReader      json object to [[com.adelegue.elastic.client.api.BulkResponse]] conversion
+    * @param ec           ExecutionContext for future execution
+    * @tparam D the type of the document
+    * @return a [[com.adelegue.elastic.client.api.BulkResponse]]
+    */
+  def oneBulk[D](bulk: Seq[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]]
+
 
   /**
     * The scroll search return a [[org.reactivestreams.Publisher]] (see reactives streams) of result.
