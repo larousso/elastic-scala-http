@@ -14,6 +14,8 @@ import play.api.libs.json.{JsObject, JsValue, Json}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
+import com.adelegue.elastic.client.implicits._
+
 
 /**
   * Created by adelegue on 12/04/2016.
@@ -225,7 +227,7 @@ class ElasticClientSpec extends Specification with JsonMatchers {
           }
         }
         """
-      await(client.putMapping("twitter", "tweet", Json.parse(mappingUpdate))) mustEqual IndexOps(true)
+      await(client.putMapping("twitter", "tweet", Json.parse(mappingUpdate), false)) mustEqual IndexOps(true)
       await(client.getMapping("twitter", "tweet")) mustEqual Json.parse(
         """
         {
@@ -281,9 +283,9 @@ class ElasticClientSpec extends Specification with JsonMatchers {
           |  }
           |}
         """.stripMargin
-      await(client.putMapping("my_index", "type_one", Json.parse(mappingUpdate))) must throwA[EsException[JsValue]]
-      await(client.putMapping("my_index", "type_one", Json.parse(mappingUpdate), update_all_types = true)) mustEqual IndexOps(true)
-      await(client.getMapping("my_index", "type_one")) mustEqual Json.parse(
+      await(client.putMapping("my_index" / "type_one", Json.parse(mappingUpdate))) must throwA[EsException[JsValue]]
+      await(client.putMapping("my_index" / "type_one", Json.parse(mappingUpdate), update_all_types = true)) mustEqual IndexOps(true)
+      await(client.getMapping("my_index" / "type_one")) mustEqual Json.parse(
         """
         {
           "my_index" : {

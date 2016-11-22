@@ -81,8 +81,10 @@ object PlayJson {
     ((__ \ "_index").format[String] ~
       (__ \ "_type").format[String] ~
       (__ \ "_id").format[String] ~
-      (__ \ "_version").format[Int] ~
-      (__ \ "_shards").format[Shards[JsValue]]
+      (__ \ "_version").formatNullable[Int] ~
+      (__ \ "_shards").formatNullable[Shards[JsValue]] ~
+      (__ \ "status").format[Int] ~
+      (__ \ "error").formatNullable[JsValue]
       ) (BulkResult.apply, unlift(BulkResult.unapply))
 
   private implicit val bulkItemFormat: Format[BulkItem[JsValue]] =
@@ -113,9 +115,6 @@ object PlayJson {
     Json.stringify(json)
   }
 
-  implicit val strJsObjectWrites = Writer[JsObject, String] { json =>
-    Json.stringify(json)
-  }
   implicit val strJsValueReads = Reader[String, JsValue] { str =>
     Json.parse(str)
   }
@@ -130,10 +129,6 @@ object PlayJson {
 
   implicit val scrollWriter = Writer[Scroll, JsValue] { scroll =>
     Json.toJson(scroll)
-  }
-
-  implicit val strJsObjectReads = Reader[String, JsObject] { str =>
-    Json.parse(str).as[JsObject]
   }
 
   implicit val indexOpsReads = Reader[JsValue, IndexOps] { json =>

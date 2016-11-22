@@ -23,6 +23,14 @@ trait Elastic[JsonR] {
   def index(name: String, `type`: Option[String] = None): Index[JsonR]
 
   /**
+    * Référence to the index
+    *
+    * @param typeDefinition   the definiton of the index
+    * @return an Index référence.
+    */
+  def index(typeDefinition: TypeDefinition): Index[JsonR]
+
+  /**
     * Verify if the index exists
     *
     * @param name    of the index
@@ -43,6 +51,8 @@ trait Elastic[JsonR] {
     */
   def getMapping(index: String, `type`: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
 
+  def getMapping(typeDefinition: TypeDefinition)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] =
+    getMapping(typeDefinition.name, typeDefinition.`type`)(sReader, ec)
   /**
     * Return the mappings definitions
     *
@@ -76,7 +86,36 @@ trait Elastic[JsonR] {
     * @tparam S settings type
     * @return IndexOps
     */
-  def createIndex[S](name: String, settings: S)(implicit mWrites: Writer[S, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps]
+  def createIndex[S](name: String, settings: Option[S])(implicit mWrites: Writer[S, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps]
+
+  /**
+    * Index creation
+    *
+    * @param name       of the index
+    * @param settings   of the index
+    * @param mWrites    settings to string conversion
+    * @param sReader    json string to json object conversion
+    * @param jsonReader json to IndexOps conversion
+    * @param ec         ExecutionContext for future execution
+    * @tparam S settings type
+    * @return IndexOps
+    */
+  def createIndex[S](name: String, settings: S)(implicit mWrites: Writer[S, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] =
+    createIndex(name, Some(settings))(mWrites, sReader, jsonReader, ec)
+
+  /**
+    * Index creation
+    *
+    * @param name       of the index
+    * @param mWrites    settings to string conversion
+    * @param sReader    json string to json object conversion
+    * @param jsonReader json to IndexOps conversion
+    * @param ec         ExecutionContext for future execution
+    * @tparam S settings type
+    * @return IndexOps
+    */
+  def createIndex[S](name: String)(implicit mWrites: Writer[S, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] =
+    createIndex(name, None)(mWrites, sReader, jsonReader, ec)
 
   /**
     * Aliases creation
@@ -117,8 +156,38 @@ trait Elastic[JsonR] {
     * @tparam M mapping type
     * @return IndexOps
     */
-  def putMapping[M](name: String, `type`: String, mapping: M, update_all_types: Boolean = false)(implicit mWrites: Writer[M, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps]
+  def putMapping[M](name: String, `type`: String, mapping: M, update_all_types: Boolean)(implicit mWrites: Writer[M, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps]
 
+  /**
+    * Mapping modification
+    *
+    * @param name             name of the index
+    * @param `type`           the name of the type
+    * @param mapping          the mapping to update
+    * @param mWrites          mapping to json string conversion
+    * @param sReader          json string to json object conversion
+    * @param jsonReader       json object to IndexOps conversion
+    * @param ec               ExecutionContext for future execution
+    * @tparam M mapping type
+    * @return IndexOps
+    */
+  def putMapping[M](name: String, `type`: String, mapping: M)(implicit mWrites: Writer[M, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] =
+    putMapping(name, `type`, mapping, false)(mWrites, sReader, jsonReader, ec)
+
+  /**
+    *
+    * @param typeDefinition
+    * @param mapping          the mapping to update
+    * @param update_all_types to update all type if conflicts
+    * @param mWrites          mapping to json string conversion
+    * @param sReader          json string to json object conversion
+    * @param jsonReader       json object to IndexOps conversion
+    * @param ec               ExecutionContext for future execution
+    * @tparam M mapping type
+    * @return IndexOps
+    */
+  def putMapping[M](typeDefinition: TypeDefinition, mapping: M, update_all_types: Boolean = false)(implicit mWrites: Writer[M, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexOps], ec: ExecutionContext): Future[IndexOps] =
+    putMapping[M](typeDefinition.name, typeDefinition.`type`, mapping, update_all_types)(mWrites, sReader, jsonReader, ec)
   /**
     * Analyse of query.
     *
@@ -416,7 +485,6 @@ trait Elastic[JsonR] {
     * @param index        name of the index
     * @param `type`       name of the type
     * @param bulk         a Seq of [[com.adelegue.elastic.client.api.Bulk]] to send in bulk
-    * @param batchSize    the size of the packet of bulk operations to send to elastic
     * @param sWrites      json to string conversion
     * @param docWriter    document to json object conversion
     * @param bulkOpWriter [[com.adelegue.elastic.client.api.Bulk]] to json object conversion
@@ -426,7 +494,7 @@ trait Elastic[JsonR] {
     * @tparam D the type of the document
     * @return a [[com.adelegue.elastic.client.api.BulkResponse]]
     */
-  def oneBulk[D](index: Option[String] = None, `type`: Option[String] = None, bulk: Seq[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]]
+  def oneBulk[D](index: Option[String] = None, `type`: Option[String] = None, bulk: Seq[Bulk[D]])(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]]
 
 }
 
@@ -436,6 +504,8 @@ trait Elastic[JsonR] {
   * @tparam JsonR a representation of json.
   */
 trait Index[JsonR] {
+
+  def / (`type`: String) : Index[JsonR]
 
   /**
     * Index operation
@@ -613,7 +683,6 @@ trait Index[JsonR] {
     * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
     *
     * @param bulk         a Seq of [[com.adelegue.elastic.client.api.Bulk]] to send in bulk
-    * @param batchSize    the size of the packet of bulk operations to send to elastic
     * @param sWrites      json to string conversion
     * @param docWriter    document to json object conversion
     * @param bulkOpWriter [[com.adelegue.elastic.client.api.Bulk]] to json object conversion
@@ -623,7 +692,7 @@ trait Index[JsonR] {
     * @tparam D the type of the document
     * @return a [[com.adelegue.elastic.client.api.BulkResponse]]
     */
-  def oneBulk[D](bulk: Seq[Bulk[D]], batchSize: Int)(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]]
+  def oneBulk[D](bulk: Seq[Bulk[D]])(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]]
 
 
   /**
@@ -641,6 +710,8 @@ trait Index[JsonR] {
   def scrollSearch[Q](query: Q, scroll: String = "1m", size: Option[Int] = None)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]]
 
 }
+
+case class TypeDefinition(name: String, `type`: String)
 
 sealed trait Consistency {
   def value: String
@@ -762,6 +833,7 @@ case class BulkOpDetail(_index: Option[String], _type: Option[String], _id: Opti
   */
 case class BulkOpType(index: Option[BulkOpDetail] = None, delete: Option[BulkOpDetail] = None, create: Option[BulkOpDetail] = None, update: Option[BulkOpDetail] = None) extends ESRequest
 
+
 /**
   * A bulk directive.
   *
@@ -770,6 +842,23 @@ case class BulkOpType(index: Option[BulkOpDetail] = None, delete: Option[BulkOpD
   * @tparam D the type of the document.
   */
 case class Bulk[D](operation: BulkOpType, source: Option[D]) extends ESRequest
+
+object Bulk {
+  def index[D](index: String, `type`: String, id: String, source: D) = Bulk(BulkOpType(index = Some(BulkOpDetail(Some(index), Some(`type`), Some(id)))), Some(source))
+  def index[D](index: String, `type`: String, source: D) = Bulk(BulkOpType(index = Some(BulkOpDetail(Some(index), Some(`type`), None))), Some(source))
+  def index[D](id: String, source: D) = Bulk(BulkOpType(index = Some(BulkOpDetail(None, None, Some(id)))), Some(source))
+  def index[D](source: D) = Bulk(BulkOpType(index = Some(BulkOpDetail(None, None, None))), Some(source))
+  def update[D](index: String, `type`: String, id: String, source: D) = Bulk(BulkOpType(update = Some(BulkOpDetail(Some(index), Some(`type`), Some(id)))), Some(source))
+  def update[D](index: String, `type`: String, source: D) = Bulk(BulkOpType(update = Some(BulkOpDetail(Some(index), Some(`type`), None))), Some(source))
+  def update[D](id: String, source: D) = Bulk(BulkOpType(update = Some(BulkOpDetail(None, None, Some(id)))), Some(source))
+  def update[D](source: D) = Bulk(BulkOpType(update = Some(BulkOpDetail(None, None, None))), Some(source))
+  def create[D](index: String, `type`: String, id: String, source: D) = Bulk(BulkOpType(create = Some(BulkOpDetail(Some(index), Some(`type`), Some(id)))), Some(source))
+  def create[D](index: String, `type`: String, source: D) = Bulk(BulkOpType(create = Some(BulkOpDetail(Some(index), Some(`type`), None))), Some(source))
+  def create[D](id: String, source: D) = Bulk(BulkOpType(create = Some(BulkOpDetail(None, None, Some(id)))), Some(source))
+  def create[D](source: D) = Bulk(BulkOpType(create = Some(BulkOpDetail(None, None, None))), Some(source))
+  def delete(index: String, `type`: String, id: String) = Bulk(BulkOpType(delete = Some(BulkOpDetail(Some(index), Some(`type`), Some(id)))), None)
+  def delete(id: String) = Bulk(BulkOpType(delete = Some(BulkOpDetail(None, None, Some(id)))), None)
+}
 
 /**
   * An scroll request.
@@ -902,7 +991,7 @@ case class SearchResponse[Json](took: Int, _shards: Shards[Json], timed_out: Boo
   * @param _shards
   * @tparam Json
   */
-case class BulkResult[Json](_index: String, _type: String, _id: String, _version: Int, _shards: Shards[Json]) extends ESResponse
+case class BulkResult[Json](_index: String, _type: String, _id: String, _version: Option[Int], _shards: Option[Shards[Json]], status: Int, error: Option[Json]) extends ESResponse
 
 /**
   *
