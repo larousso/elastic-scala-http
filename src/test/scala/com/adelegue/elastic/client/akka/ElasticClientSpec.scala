@@ -607,6 +607,30 @@ class ElasticClientSpec extends Specification with JsonMatchers {
       await(client.verifyIndex("index")) mustEqual false
     }
 
+
+    "bulk operation as flow" in {
+
+      val ids = (1 to 105).map(i => i.toString).toList
+      val res: Future[Seq[BulkResponse[JsValue]]] = Source(ids)
+        .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))))
+        .via(client.bulkFlow[MonDocument](batchSize = 10))
+        .runWith(Sink.seq)
+
+      val result: List[BulkResponse[JsValue]] = await(res, Duration(1, TimeUnit.MINUTES)).toList
+      val allItems = result.flatMap(r => r.items).flatMap(i => i.index.toList).map(i => i._id)
+      allItems mustEqual ids
+
+      await(client.refresh(Seq("index"))) must beLike[IndexResponse[JsValue]] {
+        case e => e._shards.failed mustEqual 0
+      }
+
+      val search: SearchResponse[JsValue] = await(client.index("index", Some("type")).search(Json.obj("query" -> Json.obj("match_all" -> Json.obj()))))
+      search.hits.total mustEqual 105
+
+      await(client.deleteIndex("index")) mustEqual IndexOps(true)
+      await(client.verifyIndex("index")) mustEqual false
+    }
+
     "scroll operation" in {
 
       val jsonSettings = """ { "settings" : { "number_of_shards" : 1 } } """

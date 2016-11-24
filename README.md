@@ -198,7 +198,7 @@ Bulks :
 
 ```scala 
 
-  val publisher: Publisher[Bulk[MonDocument]] = Source((1 to 105).map(i => i.toString))
+  val publisher: Publisher[Bulk[MonDocument]] = Source((1 to 105).map(_.toString))
         .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))) )
         .runWith(Sink.asPublisher(fanout = false))
   
@@ -207,6 +207,16 @@ Bulks :
   val respPublisher: Publisher[BulkResponse[JsValue]] = client.bulk[MonDocument](publisher = publisher, batchSize = 10)
 
 ``` 
+Or 
+```scala 
+    val ids = (1 to 105).map(i => i.toString).toList
+    val res: Future[Seq[BulkResponse[JsValue]]] = Source(ids)
+      .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))))
+      .via(client.bulkFlow[MonDocument](batchSize = 10))
+      .runWith(Sink.seq)
+
+```
+
 
 Scroll search 
 
