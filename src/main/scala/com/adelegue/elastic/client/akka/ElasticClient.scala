@@ -15,25 +15,26 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Created by adelegue on 12/04/2016.
   */
-class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterializer: ActorMaterializer, val actorSystem: ActorSystem) extends Elastic[JsonR] {
+class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: ActorSystem) extends Elastic[JsonR] {
 
-  implicit val sys = actorSystem
-  implicit val mat = actorMaterializer
+  private implicit val sys = actorSystem
+  private implicit val mat = ActorMaterializer()
 
-  val http: HttpExt = Http(actorSystem)
+  private val http: HttpExt = Http(actorSystem)
 
-  val baseUri = Uri().withScheme("http").withHost(host).withPort(port)
+  private val baseUri = Uri().withScheme("http").withHost(host).withPort(port)
 
   private val _this = this
 
-  def notImplemented[T] = Future.failed[T](new RuntimeException("Unimplemented"))
+  private def notImplemented[T] = Future.failed[T](new RuntimeException("Unimplemented"))
 
-  def buildRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None): HttpRequest = {
+  private def buildRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None): HttpRequest = {
     val uri: Uri = query.fold(baseUri.withPath(path))(baseUri.withPath(path).withQuery)
     HttpRequest(method, uri, entity = body.fold(HttpEntity.Empty)(HttpEntity.apply))
   }
 
-  def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
+  private def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
+    val start = System.currentTimeMillis()
     http.singleRequest(buildRequest(path, method, body, query)).flatMap {
       case HttpResponse(code, _, entity, _) if code == StatusCodes.OK || code == StatusCodes.Created =>
         entity.dataBytes.map(_.utf8String).runFold("")((str, acc) => str + acc)
@@ -47,16 +48,16 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
     }
   }
 
-  def get(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  private def get(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.GET, body, query)
 
-  def post(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  private def post(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.POST, body, query)
 
-  def put(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  private def put(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.PUT, body, query)
 
-  def delete(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  private def delete(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.DELETE, body, query)
 
   private def indexPath(names: Seq[String], types: Seq[String]) = names match {
@@ -64,7 +65,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
     case _ => Path.Empty / names.mkString(",") ++ toPath(types)
   }
 
-  def toPath(values: Seq[String]) = values match {
+  private def toPath(values: Seq[String]) = values match {
     case Nil | Seq() => Path.Empty
     case _ => Path.Empty / values.mkString(",")
   }
@@ -73,9 +74,9 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   override def verifyIndex(name: String)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[Boolean] = {
     http.singleRequest(buildRequest(Path.Empty / name, HttpMethods.HEAD, None)).flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-        Future.successful(true)
+        entity.dataBytes.runWith(Sink.ignore).map(_ => true)
       case HttpResponse(StatusCodes.NotFound, headers, entity, _) =>
-        Future.successful(false)
+        entity.dataBytes.runWith(Sink.ignore).map(_ => false)
       case HttpResponse(code, _, entity, _) =>
         entity.dataBytes
           .map(_.utf8String)
@@ -133,9 +134,9 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
   override def verifyTemplate(name: String)(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[Boolean] = {
     http.singleRequest(buildRequest(Path.Empty / "_template" / name, HttpMethods.HEAD, None)).flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-        Future.successful(true)
+        entity.dataBytes.runWith(Sink.ignore).map(_ => true)
       case HttpResponse(StatusCodes.NotFound, headers, entity, _) =>
-        Future.successful(false)
+        entity.dataBytes.runWith(Sink.ignore).map(_ => false)
       case HttpResponse(code, _, entity, _) =>
         entity.dataBytes
           .map(_.utf8String)
@@ -354,20 +355,19 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorMaterialize
 class ElasticClientBuilder(
                             host: Option[String] = None,
                             port: Option[Int] = None,
-                            actorMaterializer: Option[ActorMaterializer] = None,
                             actorSystem: Option[ActorSystem] = None) {
 
-  def withHost(host: String) = new ElasticClientBuilder(Some(host), port, actorMaterializer, actorSystem)
+  def withHost(host: String) = new ElasticClientBuilder(Some(host), port, actorSystem)
 
-  def withPort(port: Int) = new ElasticClientBuilder(host, Some(port), actorMaterializer, actorSystem)
+  def withPort(port: Int) = new ElasticClientBuilder(host, Some(port), actorSystem)
 
-  def withActorMaterializer(actorMaterializer: ActorMaterializer)() = new ElasticClientBuilder(host, port, Some(actorMaterializer), actorSystem)
+  def withActorMaterializer(actorMaterializer: ActorMaterializer)() = new ElasticClientBuilder(host, port, actorSystem)
 
-  def withActorSystem(actorSystem: ActorSystem) = new ElasticClientBuilder(host, port, actorMaterializer, Some(actorSystem))
+  def withActorSystem(actorSystem: ActorSystem) = new ElasticClientBuilder(host, port, Some(actorSystem))
 
   def build[JsonR](): ElasticClient[JsonR] = {
     implicit val actorSys = actorSystem.getOrElse(ActorSystem("ElasticClient"))
-    new ElasticClient[JsonR](host.getOrElse("localhost"), port.getOrElse(9200), actorMaterializer.getOrElse(ActorMaterializer()), actorSys)
+    new ElasticClient[JsonR](host.getOrElse("localhost"), port.getOrElse(9200), actorSys)
   }
 
 }
@@ -379,6 +379,6 @@ object ElasticClientBuilder {
 object ElasticClient {
 
   def apply[JsonR](host: String = "localhost", port: Int = 9200)(implicit actorSystem: ActorSystem = ActorSystem("ElasticClient"), actorMaterializer: ActorMaterializer): ElasticClient[JsonR] = {
-    new ElasticClient[JsonR](host, port, actorMaterializer, actorSystem)
+    new ElasticClient[JsonR](host, port, actorSystem)
   }
 }

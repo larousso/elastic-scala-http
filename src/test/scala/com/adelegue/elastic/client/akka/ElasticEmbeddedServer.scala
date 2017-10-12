@@ -3,10 +3,15 @@ package com.adelegue.elastic.client.akka
 import java.io.IOException
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
+import java.util
 import java.util.UUID
+import javafx.scene.NodeBuilder
 
 import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.node.NodeBuilder
+import org.elasticsearch.index.reindex.ReindexPlugin
+import org.elasticsearch.node.{InternalSettingsPreparer, Node}
+import org.elasticsearch.plugins.Plugin
+import org.elasticsearch.transport.Netty4Plugin
 
 /**
   * Created by adelegue on 12/04/2016.
@@ -26,9 +31,13 @@ class ElasticEmbeddedServer {
     .put("transport.tcp.port", "10902")
     .build
 
-  private lazy val node = NodeBuilder.nodeBuilder().local(true).settings(settings).build
+  private lazy val node = MyNode(settings, util.Arrays.asList(classOf[Netty4Plugin], classOf[ReindexPlugin]))
 
-  def run(): Unit = node.start()
+  def run(): Unit = {
+    println("Starting elasticsearch embedded server")
+    node.start()
+    println("Server started")
+  }
 
   def stop(): Unit = {
     node.close()
@@ -43,8 +52,15 @@ class ElasticEmbeddedServer {
       case e: Exception => println(s"Home directory ${homeDir.toPath} cleanup failed")
     }
   }
-
 }
+
+import java.util
+
+case class MyNode(
+      preparedSettings: Settings,
+      classpathPlugins: util.Collection[Class[_ <: Plugin]]
+) extends Node(InternalSettingsPreparer.prepareEnvironment(preparedSettings, null), classpathPlugins)
+
 
 object DeleteDir extends (Path => Unit) {
 
