@@ -9,6 +9,8 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.{Http, HttpExt}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.util.ByteString
+import com.typesafe.config.{Config, ConfigFactory}
 import elastic.api._
 import org.reactivestreams.Publisher
 
@@ -53,7 +55,7 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
 
   private val logger = Logging(actorSystem, this)
 
-  private val http: HttpExt = Http(actorSystem)
+  private val http: HttpExt = Http()
 
   private val baseUri = server
 
@@ -61,16 +63,16 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
 
   private def notImplemented[T] = Future.failed[T](new RuntimeException("Unimplemented"))
 
-  private def buildRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None): HttpRequest = {
+  private def buildRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`): HttpRequest = {
     val uri: Uri = query.fold(baseUri.withPath(path))(baseUri.withPath(path).withQuery)
     val headers: immutable.Seq[HttpHeader] = credentials.toList
-    HttpRequest(method, uri, entity = body.fold(HttpEntity.Empty)(HttpEntity.apply), headers = headers)
+    HttpRequest(method, uri, entity = body.map(b => HttpEntity.Strict(contentType, ByteString(b))).getOrElse(HttpEntity.Empty), headers = headers)
   }
 
-  private def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
+  private def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
     val start = System.currentTimeMillis()
-    val resp = http.singleRequest(buildRequest(path, method, body, query)).flatMap {
-      case HttpResponse(code, _, entity, _) if code == StatusCodes.OK || code == StatusCodes.Created =>
+    val resp = http.singleRequest(buildRequest(path, method, body, query, contentType)).flatMap {
+      case HttpResponse(code, _, entity, _) if expectedStatus contains code =>
         entity.dataBytes.map(_.utf8String).runFold("")((str, acc) => str + acc)
       case HttpResponse(code, _, entity, _) =>
         entity.dataBytes
@@ -91,17 +93,17 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
     resp
   }
 
-  private def get(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
-    request(path, HttpMethods.GET, body, query)
+  private def get(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+    request(path, HttpMethods.GET, body, query, contentType, expectedStatus)
 
-  private def post(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
-    request(path, HttpMethods.POST, body, query)
+  private def post(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+    request(path, HttpMethods.POST, body, query, contentType, expectedStatus)
 
-  private def put(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
-    request(path, HttpMethods.PUT, body, query)
+  private def put(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+    request(path, HttpMethods.PUT, body, query, contentType, expectedStatus)
 
-  private def delete(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
-    request(path, HttpMethods.DELETE, body, query)
+  private def delete(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+    request(path, HttpMethods.DELETE, body, query, contentType, expectedStatus)
 
   private def indexPath(names: Seq[String], types: Seq[String]) = names match {
     case Nil | Seq() => Path.Empty / "*" ++ toPath(types)

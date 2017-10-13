@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+if [ $# -eq 0 ]
+  then
+    echo "Missing version"
+    exit 0
+fi
+
 sbt '+ publish'
 
 git add repository

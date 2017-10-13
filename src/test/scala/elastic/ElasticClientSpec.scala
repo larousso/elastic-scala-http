@@ -454,6 +454,25 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
       }
     }
 
+
+    "simple get " in {
+      cleanUp("test") {
+        val index: Index[JsValue] = client.index("test", Some("type"))
+
+
+        val responseNotFound = client.index("test" / "type").get("1").failing[EsException[JsValue]]
+        responseNotFound.httpCode mustEqual 404
+
+        val document1 = MonDocument("nom")
+        index.index(document1, Some("1")).futureValue._index must be(Some("test"))
+
+        val response = client.index("test" / "type").get("1").futureValue
+        response.found mustEqual true
+
+        response.as[MonDocument] mustEqual document1
+      }
+    }
+
     "mget " in {
       cleanUp("test") {
         val index: Index[JsValue] = client.index("test", Some("type"))
