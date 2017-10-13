@@ -10,9 +10,9 @@ Work with elasticsearch 2.3.1
 Dependencies : 
 
 ```scala
-libraryDependencies += "com.adelegue" %% "elastic-scala-http" % "0.0.1"
+libraryDependencies += "com.adelegue" %% "elastic-scala-http" % "0.0.2"
 
-resolvers += "larousso" at "https://raw.github.com/larousso/mvn-repo/master/releases/",
+resolvers += "larousso" at "https://raw.github.com/larousso/elastic-scala-http/master/repository/releases",
 ```
 
 # Initialisation
