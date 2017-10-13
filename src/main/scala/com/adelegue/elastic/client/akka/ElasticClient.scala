@@ -3,25 +3,40 @@ package com.adelegue.elastic.client.akka
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.event.LogSource
-import akka.http.scaladsl.{Http, HttpExt}
 import akka.http.scaladsl.model.Uri.{Path, Query}
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
+import akka.http.scaladsl.{Http, HttpExt}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import com.adelegue.elastic.client.api._
 import org.reactivestreams.Publisher
 
+import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+
+
+
+object ElasticClient {
+
+  def apply[JsonR](host: String = "localhost", port: Int = 9200, user: String = "", password: String = "")(implicit actorSystem: ActorSystem = ActorSystem("ElasticClient")): ElasticClient[JsonR] = {
+    val credentials = for {
+      u <- Option(user).filterNot(s => s == "")
+      p <- Option(password).filterNot(s => s == "")
+    } yield Authorization(BasicHttpCredentials(u, p))
+    new ElasticClient[JsonR](host, port, credentials = credentials)
+  }
+}
+
 
 /**
   * Created by adelegue on 12/04/2016.
   */
-class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: ActorSystem) extends Elastic[JsonR] {
+class ElasticClient[JsonR](host: String = "localhost", port: Int = 9200, credentials: Option[Authorization] = None)(implicit actorSystem: ActorSystem) extends Elastic[JsonR] {
 
   import akka.event.Logging
 
-  private implicit val sys = actorSystem
   private implicit val mat = ActorMaterializer()
   private implicit val logSource = new LogSource[ElasticClient[JsonR]] {
     override def genString(t: ElasticClient[JsonR]) = "ElasticClient"
@@ -39,7 +54,8 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
 
   private def buildRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None): HttpRequest = {
     val uri: Uri = query.fold(baseUri.withPath(path))(baseUri.withPath(path).withQuery)
-    HttpRequest(method, uri, entity = body.fold(HttpEntity.Empty)(HttpEntity.apply))
+    val headers: immutable.Seq[HttpHeader] = credentials.toList
+    HttpRequest(method, uri, entity = body.fold(HttpEntity.Empty)(HttpEntity.apply), headers = headers)
   }
 
   private def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
@@ -376,36 +392,5 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
     override def scroll[Q](query: Q, scroll: String, size: Int)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Source[SearchResponse[JsonR], NotUsed] =
       _this.scroll(Seq(name), `type`.toSeq, query, scroll, size)(qWrites, jsonWriter, sWriter, sReader, jsonReader, ec)
 
-  }
-}
-
-class ElasticClientBuilder(
-                            host: Option[String] = None,
-                            port: Option[Int] = None,
-                            actorSystem: Option[ActorSystem] = None) {
-
-  def withHost(host: String) = new ElasticClientBuilder(Some(host), port, actorSystem)
-
-  def withPort(port: Int) = new ElasticClientBuilder(host, Some(port), actorSystem)
-
-  def withActorMaterializer(actorMaterializer: ActorMaterializer)() = new ElasticClientBuilder(host, port, actorSystem)
-
-  def withActorSystem(actorSystem: ActorSystem) = new ElasticClientBuilder(host, port, Some(actorSystem))
-
-  def build[JsonR](): ElasticClient[JsonR] = {
-    implicit val actorSys = actorSystem.getOrElse(ActorSystem("ElasticClient"))
-    new ElasticClient[JsonR](host.getOrElse("localhost"), port.getOrElse(9200), actorSys)
-  }
-
-}
-
-object ElasticClientBuilder {
-  def apply(): ElasticClientBuilder = new ElasticClientBuilder()
-}
-
-object ElasticClient {
-
-  def apply[JsonR](host: String = "localhost", port: Int = 9200)(implicit actorSystem: ActorSystem = ActorSystem("ElasticClient"), actorMaterializer: ActorMaterializer): ElasticClient[JsonR] = {
-    new ElasticClient[JsonR](host, port, actorSystem)
   }
 }

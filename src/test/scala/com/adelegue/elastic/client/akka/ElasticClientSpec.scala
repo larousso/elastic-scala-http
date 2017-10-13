@@ -36,12 +36,7 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
   implicit val actorSystem = ActorSystem()
   implicit val mat = ActorMaterializer()
 
-  implicit val client: ElasticClient[JsValue] = ElasticClientBuilder()
-    .withHost("localhost")
-    .withPort(10901)
-    .withActorSystem(actorSystem)
-    .withActorMaterializer(mat)
-    .build()
+  implicit val client: ElasticClient[JsValue] = ElasticClient(port = 10901)
 
   override protected def beforeAll(): Unit = {
     server.run()
