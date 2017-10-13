@@ -373,9 +373,17 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
       }
     }
 
-    override def delete(id: String)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
+    override def delete(id: String, refresh: Boolean = false, routing: Option[String] = None)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
       if (`type`.isEmpty) throw new IllegalArgumentException("type is required to delete document")
-      _this.delete(indexPath / id).map(str => jsonReader.read(sReader.read(str)))
+
+      val querys: Seq[(String, String)] = Seq(
+        Some(refresh).filter(b => b).map(_ => "refresh" -> "true"),
+        routing.map(r => "routing" -> r)
+      ).flatten
+
+      val query: Option[Query] = if (querys.isEmpty) None else Some(Query(querys: _*))
+
+      _this.delete(indexPath / id, query = query).map(str => jsonReader.read(sReader.read(str)))
     }
 
     override def mget(request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]] =

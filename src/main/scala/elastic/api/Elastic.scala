@@ -631,7 +631,7 @@ trait Index[JsonR] {
     * @param ec         ExecutionContext for future execution
     * @return a [[elastic.api.IndexResponse]] object
     */
-  def delete(id: String)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
+  def delete(id: String, refresh: Boolean = false, routing: Option[String] = None)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
   /**
     * Multiple get operation
