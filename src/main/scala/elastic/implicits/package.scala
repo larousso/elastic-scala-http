@@ -1,6 +1,6 @@
-package com.adelegue.elastic.client
+package elastic
 
-import com.adelegue.elastic.client.api.TypeDefinition
+import elastic.api.TypeDefinition
 
 /**
   * Created by adelegue on 19/11/2016.

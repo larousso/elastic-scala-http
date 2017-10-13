@@ -1,6 +1,6 @@
-package com.adelegue.elastic.client.codec
+package elastic.codec
 
-import com.adelegue.elastic.client.api._
+import elastic.api._
 
 /**
   * Created by adelegue on 12/04/2016.

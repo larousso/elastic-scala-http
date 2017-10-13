@@ -1,11 +1,10 @@
-package com.adelegue.elastic.client.akka
+package elastic.spec
 
 import java.io.IOException
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 import java.util
 import java.util.UUID
-import javafx.scene.NodeBuilder
 
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexPlugin

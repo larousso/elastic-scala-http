@@ -20,11 +20,11 @@ resolvers += "larousso" at "https://raw.github.com/larousso/elastic-scala-http/m
 Import :  
 
 ```scala
-import com.adelegue.elastic.client.api._  
-import com.adelegue.elastic.client.akka._
+import elastic.api._  
+import elastic.client._
 
 // Play json support 
-import com.adelegue.elastic.client.codec.PlayJson._
+import elastic.codec.PlayJson._
 ```
 
 Client creation :

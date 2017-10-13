@@ -1,20 +1,21 @@
-package com.adelegue.elastic.client.akka
+package elastic
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import com.adelegue.elastic.client.api._
-import com.adelegue.elastic.client.codec.PlayJson._
-import com.adelegue.elastic.client.implicits._
+import elastic.api._
+import elastic.implicits._
+import elastic.codec.PlayJson._
+import elastic.client.ElasticClient
+import elastic.spec.ElasticEmbeddedServer
 import org.reactivestreams.Publisher
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures, Waiters}
 import org.scalatest.time.{Minutes, Span}
 import org.scalatest._
-import play.api.libs.json._
+import play.api.libs.json.{JsObject, JsValue, Json}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 /**
@@ -35,6 +36,7 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
   val server = new ElasticEmbeddedServer
   implicit val actorSystem = ActorSystem()
   implicit val mat = ActorMaterializer()
+  import actorSystem.dispatcher
 
   implicit val client: ElasticClient[JsValue] = ElasticClient.fromServer(s"http://localhost:10901")
 
@@ -757,9 +759,11 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
 
 }
 
+
+
 object Helper {
   implicit class Failing[A](val f: Future[A]) extends Assertions with Waiters {
-    def failing[T <: Throwable](implicit m: Manifest[T]) = {
+    def failing[T <: Throwable](implicit m: Manifest[T], ec: ExecutionContext) = {
       val w = new Waiter
       f onComplete {
         case Failure(e) => w(throw e); w.dismiss()

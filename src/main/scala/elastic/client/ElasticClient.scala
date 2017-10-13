@@ -1,4 +1,4 @@
-package com.adelegue.elastic.client.akka
+package elastic.client
 
 import akka.NotUsed
 import akka.actor.ActorSystem
@@ -9,7 +9,7 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.{Http, HttpExt}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import com.adelegue.elastic.client.api._
+import elastic.api._
 import org.reactivestreams.Publisher
 
 import scala.collection.immutable

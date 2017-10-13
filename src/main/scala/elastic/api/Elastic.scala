@@ -1,4 +1,4 @@
-package com.adelegue.elastic.client.api
+package elastic.api
 
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Source}
