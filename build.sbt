@@ -1,6 +1,6 @@
 name := """elastic-scala-http"""
 
-version := "0.0.3"
+version := "0.0.4-SNAPSHOT"
 
 organization := "com.adelegue"
 
