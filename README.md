@@ -31,7 +31,6 @@ Client creation :
 
 ```scala
 implicit val actorSystem = ActorSystem()
-implicit val mat = ActorMaterializer()
 val client = ElasticClient[JsValue](host = "localhost", port = 9200)
 ```
 
@@ -42,9 +41,7 @@ val client: ElasticClient[JsValue] = ElasticClientBuilder()
                 .withHost("localhost")
                 .withPort(9200)
                 //Optional default one provided 
-                .withActorSystem(actorSystem)
-                //Optional default one provided
-                .withActorMaterializer(mat)
+                .withActorSystem(actorSystem)               
                 .build()
 ```
 
@@ -223,10 +220,14 @@ Scroll search
 ```scala 
   val matchAllQuery = Json.obj("query" -> Json.obj("match_all" -> Json.obj()))
   
-  Source.fromPublisher(client.scrollSearch(Seq("index"), Seq("type"), matchAllQuery, size = Some(10)))
+  Source.fromPublisher(client.scrollPublisher(Seq("index"), Seq("type"), matchAllQuery, size = Some(10)))
       .mapConcat[MonDocument](r => r.hitsAs[MonDocument].toList)
       .runForeach(println)
-    
+  
+  //Or 
+  client.scroll(index = Seq("index"), query = matchAllQuery, size = Some(10)))
+        .mapConcat[MonDocument](r => r.hitsAs[MonDocument].toList)
+        .runForeach(println)      
 
 ```
 

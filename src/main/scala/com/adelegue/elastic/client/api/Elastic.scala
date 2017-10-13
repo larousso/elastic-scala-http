@@ -1,7 +1,7 @@
 package com.adelegue.elastic.client.api
 
 import akka.NotUsed
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Source}
 import org.reactivestreams.Publisher
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -311,7 +311,7 @@ trait Elastic[JsonR] {
     * @param ec      ExecutionContext for future execution
     * @return a json object of the response
     */
-  def refresh(indices: Seq[String])(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
+  def refresh(indices: String*)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
   /**
     * Flush operation
@@ -400,7 +400,7 @@ trait Elastic[JsonR] {
     * @tparam Q query object type
     * @return a [[com.adelegue.elastic.client.api.SearchResponse]]
     */
-  def search[Q](index: Seq[String], `type`: Seq[String], query: Q, from: Option[Int] = None, size: Option[Int] = None, search_type: Option[SearchType] = None, request_cache: Boolean = false, terminate_after: Option[Int] = None, timeout: Option[Int] = None)(implicit qWrites: Writer[Q, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]]
+  def search[Q](index: Seq[String] = Seq.empty[String], `type`: Seq[String] = Seq.empty[String], query: Q, from: Int = 0, size: Int = 20, search_type: SearchType = QUERY_THEN_FETCH, request_cache: Boolean = false, terminate_after: Option[Int] = None, timeout: Option[Int] = None)(implicit qWrites: Writer[Q, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]]
 
   /**
     *
@@ -439,7 +439,23 @@ trait Elastic[JsonR] {
     * @tparam Q the query object type
     * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.SearchResponse]]
     */
-  def scrollSearch[Q](index: Seq[String], `type`: Seq[String], query: Q, scroll: String = "1m", size: Option[Int] = None)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]]
+  def scrollPublisher[Q](index: Seq[String] = Seq.empty, `type`: Seq[String] = Seq.empty, query: Q, scroll: String = "1m", size: Int = 20)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]]
+
+  /**
+    * The scroll search return a [[org.reactivestreams.Publisher]] (see reactives streams) of result.
+    * All the result of the search are returned in an asynchronous stream.
+    *
+    * @param index      name of the index
+    * @param `type`     name of the type
+    * @param query      the query to execute
+    * @param qWrites    Query to json object conversion
+    * @param sReader    string to json conversion
+    * @param jsonReader json string to json object conversion
+    * @param ec         ExecutionContext for future execution
+    * @tparam Q the query object type
+    * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.SearchResponse]]
+    */
+  def scroll[Q](index: Seq[String] = Seq.empty, `type`: Seq[String] = Seq.empty, query: Q, scroll: String = "1m", size: Int = 20)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Source[SearchResponse[JsonR], NotUsed]
 
   /**
     * Bulk operation
@@ -707,7 +723,22 @@ trait Index[JsonR] {
     * @tparam Q the query object type
     * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.SearchResponse]]
     */
-  def scrollSearch[Q](query: Q, scroll: String = "1m", size: Option[Int] = None)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]]
+  def scrollPublisher[Q](query: Q, scroll: String = "1m", size: Int = 20)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]]
+
+
+  /**
+    * The scroll search return a [[org.reactivestreams.Publisher]] (see reactives streams) of result.
+    * All the result of the search are returned in an asynchronous stream.
+    *
+    * @param query      the query to execute
+    * @param qWrites    Query to json object conversion
+    * @param sReader    string to json conversion
+    * @param jsonReader json string to json object conversion
+    * @param ec         ExecutionContext for future execution
+    * @tparam Q the query object type
+    * @return a [[org.reactivestreams.Publisher]] (see reactive streams) of [[com.adelegue.elastic.client.api.SearchResponse]]
+    */
+  def scroll[Q](query: Q, scroll: String = "1m", size: Int = 20)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Source[SearchResponse[JsonR], NotUsed]
 
 }
 

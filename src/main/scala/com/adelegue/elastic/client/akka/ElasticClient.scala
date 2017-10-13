@@ -2,6 +2,7 @@ package com.adelegue.elastic.client.akka
 
 import akka.NotUsed
 import akka.actor.ActorSystem
+import akka.event.LogSource
 import akka.http.scaladsl.{Http, HttpExt}
 import akka.http.scaladsl.model.Uri.{Path, Query}
 import akka.http.scaladsl.model._
@@ -11,14 +12,22 @@ import com.adelegue.elastic.client.api._
 import org.reactivestreams.Publisher
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 /**
   * Created by adelegue on 12/04/2016.
   */
 class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: ActorSystem) extends Elastic[JsonR] {
 
+  import akka.event.Logging
+
   private implicit val sys = actorSystem
   private implicit val mat = ActorMaterializer()
+  private implicit val logSource = new LogSource[ElasticClient[JsonR]] {
+    override def genString(t: ElasticClient[JsonR]) = "ElasticClient"
+  }
+
+  private val logger = Logging(actorSystem, this)
 
   private val http: HttpExt = Http(actorSystem)
 
@@ -35,7 +44,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
 
   private def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
     val start = System.currentTimeMillis()
-    http.singleRequest(buildRequest(path, method, body, query)).flatMap {
+    val resp = http.singleRequest(buildRequest(path, method, body, query)).flatMap {
       case HttpResponse(code, _, entity, _) if code == StatusCodes.OK || code == StatusCodes.Created =>
         entity.dataBytes.map(_.utf8String).runFold("")((str, acc) => str + acc)
       case HttpResponse(code, _, entity, _) =>
@@ -46,6 +55,15 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
             Future.failed(new EsException[JsonR](jsonReader.read(cause), code.intValue(), cause))
           )
     }
+
+    resp.onComplete {
+      case Success(_) =>
+        logger.debug(s"{} {} {} Success in {}", method.value, path, query.map(q => s"query = ${q.mkString(",")}").getOrElse(""), System.currentTimeMillis() - start)
+      case Failure(_) =>
+        logger.debug(s"{} {} {} Failed in {}", method.value, path, query.map(q => s"query = ${q.mkString(",")}").getOrElse(""), System.currentTimeMillis() - start)
+    }
+
+    resp
   }
 
   private def get(path: Path, body: Option[String] = None, query: Option[Query] = None)(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
@@ -196,7 +214,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
     post(Path.Empty / indexes.mkString(",") / "_flush", query = query).map(sReader.read).map(jsonReader.read)
   }
 
-  override def refresh(indexes: Seq[String])(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
+  override def refresh(indexes: String*)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
     post(indexPath(indexes, Seq()) / "_refresh").map(s => jsonReader.read(sReader.read(s)))
   }
 
@@ -222,7 +240,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
     get(indexPath / "_mget", body).map(sReader.read).map(jsonReader.read)
   }
 
-  override def search[Q](index: Seq[String], `type`: Seq[String], query: Q, from: Option[Int], size: Option[Int], search_type: Option[SearchType], request_cache: Boolean, terminate_after: Option[Int], timeout: Option[Int])(implicit qWrites: Writer[Q, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]] = {
+  override def search[Q](index: Seq[String] = Seq.empty[String], `type`: Seq[String] = Seq.empty[String], query: Q, from: Int = 0, size: Int = 20, search_type: SearchType = QUERY_THEN_FETCH, request_cache: Boolean, terminate_after: Option[Int], timeout: Option[Int])(implicit qWrites: Writer[Q, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Future[SearchResponse[JsonR]] = {
     val indexPath: Path = if (index.isEmpty) Path./ else Path.Empty / index.mkString(",")
     val typePath = if (`type`.isEmpty) "" else `type`.mkString(",")
     get(indexPath / typePath / "_search", Some(qWrites.write(query))).map(str => jsonReader.read(sReader.read(str)))
@@ -245,35 +263,40 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
     post(indexPath.getOrElse(Path.Empty) / "_bulk", Some(body)).map(str => bReader.read(sReader.read(str)))
   }
 
-  override def scrollSearch[Q](index: Seq[String], `type`: Seq[String], query: Q, scroll: String = "1m", size: Option[Int] = None)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]] = {
+  override def scroll[Q](index: Seq[String] = Seq.empty, `type`: Seq[String] = Seq.empty, query: Q, scroll: String = "1m", size: Int = 20)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Source[SearchResponse[JsonR], NotUsed] = {
     val path = indexPath(index, `type`)
     val querys: Seq[(String, String)] = Seq(
-      Some(scroll).map(_ => "scroll" -> scroll),
-      size.map(s => "size" -> s.toString)
-    ).flatten
+      "scroll" -> scroll,
+      "size" -> size.toString
+    )
 
     Source
       .fromFuture(request(path / "_search", HttpMethods.GET, Some(qWrites.write(query)), Some(Query(querys: _*))))
       .map(str => jsonReader.read(sReader.read(str)))
       .flatMapConcat { resp =>
-        val Some(scroll_id) = resp.scroll_id
-        Source.single(resp).merge(nextScroll(scroll_id, scroll)(jsonWriter, sWriter, sReader, jsonReader, ec))
-      }
-      .runWith(Sink.asPublisher(fanout = true))
-  }
-
-  private def nextScroll(scroll_id: String, scroll: String)(implicit jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Source[SearchResponse[JsonR], NotUsed] = {
-    val scrollRequest = Scroll(scroll, scroll_id)
-    Source.fromFuture(post(Path.Empty / "_search" / "scroll", Some(sWriter.write(jsonWriter.write(scrollRequest)))))
-      .map(str => jsonReader.read(sReader.read(str)))
-      .flatMapConcat { resp =>
-        val single: Source[SearchResponse[JsonR], NotUsed] = Source.single(resp)
-        if (resp.hits.hits.isEmpty) {
-          single
-        } else {
-          single.merge(nextScroll(scroll_id, scroll))
+        resp.scroll_id match {
+          case Some(id) =>
+            Source.single(resp).concat(
+              Source.unfoldAsync(id) { scroll_id =>
+                post(Path.Empty / "_search" / "scroll", Some(sWriter.write(jsonWriter.write(Scroll(scroll, scroll_id)))))
+                  .map { str => jsonReader.read(sReader.read(str)) }
+                  .map { resp =>
+                    if (resp.hits.hits.isEmpty) {
+                      None
+                    } else {
+                      resp.scroll_id.map(id => (id, resp))
+                    }
+                  }
+              }
+            )
+          case None => Source.empty
         }
       }
+  }
+
+  override def scrollPublisher[Q](index: Seq[String] = Seq.empty, `type`: Seq[String] = Seq.empty, query: Q, scroll: String = "1m", size: Int = 20)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]] = {
+    val s: Source[SearchResponse[JsonR], NotUsed] = this.scroll(index, `type`, query, scroll, size)
+    s.runWith(Sink.asPublisher(fanout = true))
   }
 
   override def aggregation[Q](index: Seq[String], `type`: Seq[String], query: Q, from: Option[Int], size: Option[Int], search_type: Option[SearchType], request_cache: Boolean, terminate_after: Option[Int], timeout: Option[Int])(implicit qWrites: Writer[Q, String], respReads: Reader[String, SearchResponse[JsonR]], jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[SearchResponse[JsonR]] = notImplemented[SearchResponse[JsonR]]
@@ -302,7 +325,7 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
     override def index[D](data: D, id: Option[String], version: Option[Int], versionType: Option[VersionType], create: Boolean, routing: Option[String], parent: Option[String], refresh: Boolean, timeout: Option[String], consistency: Option[Consistency], detectNoop: Boolean)(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
       if (`type`.isEmpty) throw new IllegalArgumentException("type is required to index document")
       val querys: Seq[(String, String)] = Seq(
-        Some(refresh).filter(_.booleanValue()).map(_ => "refresh" -> "true"),
+        Some(refresh).filter(b => b).map(_ => "refresh" -> "true"),
         consistency.map(c => "consistency" -> c.value),
         version.map(v => "version" -> v.toString),
         versionType.map(v => "version_type" -> v.value),
@@ -347,8 +370,12 @@ class ElasticClient[JsonR](val host: String, val port: Int, val actorSystem: Act
     override def oneBulk[D](bulk: Seq[Bulk[D]])(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]] =
       _this.oneBulk(Some(name), `type`, bulk: Seq[Bulk[D]])(sWrites, docWriter, bulkOpWriter, sReader, bReader, ec)
 
-    override def scrollSearch[Q](query: Q, scroll: String, size: Option[Int])(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]] =
-      _this.scrollSearch(Seq(name), `type`.toSeq, query, scroll, size)(qWrites, jsonWriter, sWriter, sReader, jsonReader, ec)
+    override def scrollPublisher[Q](query: Q, scroll: String, size: Int = 20)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Publisher[SearchResponse[JsonR]] =
+      _this.scrollPublisher(Seq(name), `type`.toSeq, query, scroll, size)(qWrites, jsonWriter, sWriter, sReader, jsonReader, ec)
+
+    override def scroll[Q](query: Q, scroll: String, size: Int)(implicit qWrites: Writer[Q, String], jsonWriter: Writer[Scroll, JsonR], sWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, SearchResponse[JsonR]], ec: ExecutionContext): Source[SearchResponse[JsonR], NotUsed] =
+      _this.scroll(Seq(name), `type`.toSeq, query, scroll, size)(qWrites, jsonWriter, sWriter, sReader, jsonReader, ec)
+
   }
 }
 
