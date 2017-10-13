@@ -20,12 +20,21 @@ import scala.util.{Failure, Success}
 
 object ElasticClient {
 
-  def apply[JsonR](host: String = "localhost", port: Int = 9200, user: String = "", password: String = "")(implicit actorSystem: ActorSystem = ActorSystem("ElasticClient")): ElasticClient[JsonR] = {
+  def fromServer[JsonR](server: String, user: String = "", password: String = "")(implicit actorSystem: ActorSystem = ActorSystem("ElasticClient")): ElasticClient[JsonR] = {
     val credentials = for {
       u <- Option(user).filterNot(s => s == "")
       p <- Option(password).filterNot(s => s == "")
     } yield Authorization(BasicHttpCredentials(u, p))
-    new ElasticClient[JsonR](host, port, credentials = credentials)
+    new ElasticClient[JsonR](Uri(server), credentials = credentials)
+  }
+
+  def apply[JsonR](host: String = "localhost", port: Int = 9200, scheme: String = "http", user: String = "", password: String = "")(implicit actorSystem: ActorSystem = ActorSystem("ElasticClient")): ElasticClient[JsonR] = {
+    val credentials = for {
+      u <- Option(user).filterNot(s => s == "")
+      p <- Option(password).filterNot(s => s == "")
+    } yield Authorization(BasicHttpCredentials(u, p))
+    val server = Uri().withScheme(scheme).withHost(host).withPort(port)
+    new ElasticClient[JsonR](server, credentials = credentials)
   }
 }
 
@@ -33,7 +42,7 @@ object ElasticClient {
 /**
   * Created by adelegue on 12/04/2016.
   */
-class ElasticClient[JsonR](host: String = "localhost", port: Int = 9200, credentials: Option[Authorization] = None)(implicit actorSystem: ActorSystem) extends Elastic[JsonR] {
+class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = None)(implicit actorSystem: ActorSystem) extends Elastic[JsonR] {
 
   import akka.event.Logging
 
@@ -46,7 +55,7 @@ class ElasticClient[JsonR](host: String = "localhost", port: Int = 9200, credent
 
   private val http: HttpExt = Http(actorSystem)
 
-  private val baseUri = Uri().withScheme("http").withHost(host).withPort(port)
+  private val baseUri = server
 
   private val _this = this
 
