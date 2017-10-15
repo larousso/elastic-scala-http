@@ -373,6 +373,23 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
       }
     }
 
+    override def update[D](data: D, id: String, version: Option[Int], versionType: Option[VersionType], retry_on_conflict: Option[Int], routing: Option[String], parent: Option[String], timeout: Option[String], refresh: Boolean, wait_for_active_shards: Option[Boolean])(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
+      if (`type`.isEmpty) throw new IllegalArgumentException("type is required to index document")
+      val querys: Seq[(String, String)] = Seq(
+        Some(refresh).filter(b => b).map(_ => "refresh" -> "true"),
+        retry_on_conflict.map(c => "retry_on_conflict" -> c.toString),
+        wait_for_active_shards.map(c => "wait_for_active_shards" -> c.toString),
+        version.map(v => "version" -> v.toString),
+        versionType.map(v => "version_type" -> v.value),
+        parent.map(p => "parent" -> p),
+        timeout.map(t => "timeout" -> t),
+        routing.map(r => "routing" -> r)
+      ).flatten
+
+      val query: Option[Query] = if (querys.isEmpty) None else Some(Query(querys: _*))
+      post(indexPath / id / "_update", Some(strWriter.write(writer.write(data))), query).map(str => jsonReader.read(sReader.read(str)))
+    }
+
     override def delete(id: String, refresh: Boolean = false, routing: Option[String] = None)(implicit sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] = {
       if (`type`.isEmpty) throw new IllegalArgumentException("type is required to delete document")
 

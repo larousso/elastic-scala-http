@@ -570,33 +570,7 @@ trait Index[JsonR] {
     * @tparam D the type of the document
     * @return a [[elastic.api.IndexResponse]]
     */
-  def update[D](data: D, id: String, version: Option[Int] = None, versionType: Option[VersionType] = None, routing: Option[String] = None, parent: Option[String] = None, refresh: Boolean = false, timeout: Option[String] = None, consistency: Option[Consistency] = None, detectNoop: Boolean = false)(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] =
-    index(data, Some(id), version = version, versionType = versionType, create = false, routing = routing, parent = parent, refresh = refresh, timeout = timeout, consistency = consistency, detectNoop = detectNoop)
-
-  /**
-    * Create operation : index operation with create = true.
-    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
-    *
-    * @param data        document to index
-    * @param id          optional id of the document
-    * @param version     current version of the document
-    * @param versionType type of the version
-    * @param routing     routing key
-    * @param parent      parent id if there is a parent child relation
-    * @param refresh     if true, the index will be refresh
-    * @param timeout     a timeout
-    * @param consistency consistency level ALL, QUORUM, ONE
-    * @param detectNoop  detect if the version should be increase
-    * @param writer      document to json object conversion
-    * @param strWriter   json object to string conversion
-    * @param sReader     string to json object conversion
-    * @param jsonReader  json object to [[elastic.api.IndexResponse]] conversion
-    * @param ec          ExecutionContext for future execution
-    * @tparam D the type of the document
-    * @return a [[elastic.api.IndexResponse]]
-    */
-  def create[D](data: D, id: Option[String], version: Option[Int] = None, versionType: Option[VersionType] = None, routing: Option[String] = None, parent: Option[String] = None, refresh: Boolean = false, timeout: Option[String] = None, consistency: Option[Consistency] = None, detectNoop: Boolean = false)(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]] =
-    index(data, id, version = version, versionType = versionType, create = true, routing = routing, parent = parent, refresh = refresh, timeout = timeout, consistency = consistency, detectNoop = false)
+  def update[D](data: D, id: String, version: Option[Int] = None, versionType: Option[VersionType] = None, retry_on_conflict: Option[Int] = None, routing: Option[String] = None, parent: Option[String] = None, timeout: Option[String] = None, refresh: Boolean = false, wait_for_active_shards: Option[Boolean] = None)(implicit writer: Writer[D, JsonR], strWriter: Writer[JsonR, String], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, IndexResponse[JsonR]], ec: ExecutionContext): Future[IndexResponse[JsonR]]
 
   /**
     * Get a document by id
