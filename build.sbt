@@ -1,6 +1,6 @@
 name := """elastic-scala-http"""
 
-version := "0.0.7"
+version := "0.0.8"
 
 organization := "com.adelegue"
 
@@ -12,11 +12,16 @@ val akkaVersion = "2.5.6"
 
 val akkaHttpVersion = "10.0.10"
 
+resolvers ++= Seq(
+  "playjson-repo" at "https://raw.githubusercontent.com/larousso/playjson-extended/master/repository/releases/"
+)
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
   "com.typesafe.akka" %% "akka-stream"    % akkaVersion,
   "com.typesafe.akka" %% "akka-http"      % akkaHttpVersion,
   "com.typesafe.play" %% "play-json"      % "2.6.6",
+  "com.adelegue"             %% "playjson-extended"             % "0.0.1",
   "com.typesafe.akka" %% "akka-testkit"   % akkaVersion       % "test",
   "org.scalatest"     %% "scalatest"      % "3.0.1"           % "test",
   "org.elasticsearch" % "elasticsearch" % "5.5.0" % "test",

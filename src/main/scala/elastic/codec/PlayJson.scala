@@ -30,7 +30,7 @@ object PlayJson {
     ((__ \ "_index").format[String] ~
       (__ \ "_type").format[String] ~
       (__ \ "_id").format[String] ~
-      (__ \ "_score").format[Float] ~
+      (__ \ "_score").formatNullable[Float] ~
       (__ \ "_source").format[JsValue]
       ) (Hit.apply, unlift(Hit.unapply))
 
@@ -41,12 +41,12 @@ object PlayJson {
       ) (Hits.apply, unlift(Hits.unapply))
 
   private implicit val searchResponseFormat: Format[SearchResponse[JsValue]] =
-    ((__ \ "took").format[Int] ~
+      ((__ \ "took").format[Int] ~
       (__ \ "_shards").format[Shards[JsValue]] ~
       (__ \ "timed_out").format[Boolean] ~
       (__ \ "hits").format[Hits[JsValue]] ~
       (__ \ "_scroll_id").formatNullable[String] ~
-      (__ \ "aggregation").formatNullable[JsValue]
+      (__ \ "aggregations").formatNullable[JsValue]
       ) (SearchResponse.apply, unlift(SearchResponse.unapply))
 
   private implicit val getResponseFormats: Format[GetResponse[JsValue]] =

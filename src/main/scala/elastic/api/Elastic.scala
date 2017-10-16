@@ -550,23 +550,21 @@ trait Index[JsonR] {
 
   /**
     * Update operation : index operation with create = false and id required.
-    * see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
-    *
     * @param data        document to index
-    * @param id          optional id of the document
+    * @param id          id of the document
     * @param version     current version of the document
     * @param versionType type of the version
+    * @param retry_on_conflict
     * @param routing     routing key
     * @param parent      parent id if there is a parent child relation
-    * @param refresh     if true, the index will be refresh
     * @param timeout     a timeout
-    * @param consistency consistency level ALL, QUORUM, ONE
-    * @param detectNoop  detect if the version should be increase
+    * @param refresh     if true, the index will be refresh
+    * @param wait_for_active_shards
     * @param writer      document to json object conversion
     * @param strWriter   json object to string conversion
     * @param sReader     string to json object conversion
     * @param jsonReader  json object to [[elastic.api.IndexResponse]] conversion
-    * @param ec          ExecutionContext for future execution
+    * @param ec
     * @tparam D the type of the document
     * @return a [[elastic.api.IndexResponse]]
     */
@@ -960,7 +958,7 @@ case class MGetResponse[Json](docs: Seq[GetResponse[Json]]) extends ESResponse {
   * @param _source
   * @tparam Json
   */
-case class Hit[Json](_index: String, _type: String, _id: String, _score: Float, _source: Json) extends ESResponse {
+case class Hit[Json](_index: String, _type: String, _id: String, _score: Option[Float], _source: Json) extends ESResponse {
   def as[Document](implicit reads: Reader[Json, Document]): Document = reads.read(_source)
 }
 
