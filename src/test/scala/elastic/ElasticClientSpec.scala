@@ -362,7 +362,7 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
         val indexResponse = index.index(document, Some("id")).futureValue
         indexResponse._index must be(Some("test"))
 
-        val e = index.create(document, Some("id")).failing[EsException[JsValue]]
+        val e = index.index(document, Some("id")).failing[EsException[JsValue]]
 
         e.httpCode mustEqual 409
         (Json.parse(e.getMessage) \ "error" \ "type").as[String] mustEqual "version_conflict_engine_exception"
