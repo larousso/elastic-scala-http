@@ -17,7 +17,7 @@ Work with elasticsearch 2.3.1
 Dependencies : 
 
 ```sbt
-libraryDependencies += "com.adelegue" %% "elastic-scala-http" % "0.0.9"
+libraryDependencies += "com.adelegue" %% "elastic-scala-http" % "X.X.X"
 
 resolvers += Resolver.bintrayRepo("larousso", "maven")
 ```
