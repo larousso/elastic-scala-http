@@ -239,3 +239,9 @@ Scroll search
 #TODO
  
 msearch  
+
+# Release 
+
+``` 
+sbt "release with-defaults" 
+```
