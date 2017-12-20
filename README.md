@@ -1,6 +1,11 @@
 Elastic scala http client  
 =========================
 
+[travis]:                https://travis-ci.org/larousso/elastic-scala-http
+[travis-badge]:          https://travis-ci.org/larousso/elastic-scala-http.svg?branch=master
+
+[![travis-badge][]][travis]
+
 Elasticsearch scala http client base on akka http. Integration with play json library for json (de)serialisation. 
 
 Work with elasticsearch 2.3.1
