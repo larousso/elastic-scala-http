@@ -3,8 +3,10 @@ Elastic scala http client
 
 [travis]:                https://travis-ci.org/larousso/elastic-scala-http
 [travis-badge]:          https://travis-ci.org/larousso/elastic-scala-http.svg?branch=master
+[bintray]:               https://bintray.com/larousso/maven/elastic-scala-http
+[bintray-badge]:         https://img.shields.io/bintray/v/larousso/maven/elastic-scala-http.svg?maxAge=2592000
 
-[![travis-badge][]][travis]
+[![travis-badge][]][travis] [![bintray-badge][]][bintray]
 
 Elasticsearch scala http client base on akka http. Integration with play json library for json (de)serialisation. 
 
@@ -14,10 +16,10 @@ Work with elasticsearch 2.3.1
 
 Dependencies : 
 
-```scala
-libraryDependencies += "com.adelegue" %% "elastic-scala-http" % "0.0.2"
+```sbt
+libraryDependencies += "com.adelegue" %% "elastic-scala-http" % "0.0.9"
 
-resolvers += "larousso" at "https://raw.github.com/larousso/elastic-scala-http/master/repository/releases",
+resolvers += Resolver.bintrayRepo("larousso", "maven")
 ```
 
 # Initialisation
