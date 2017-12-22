@@ -12,15 +12,13 @@ lazy val root = (project in file("."))
       scalaVersion := "2.12.3",
       crossScalaVersions := Seq("2.11.8", scalaVersion.value),
       resolvers ++= Seq(
-        Resolver.jcenterRepo,
-        Resolver.bintrayRepo("larousso", "maven")
+        Resolver.jcenterRepo
       ),
       libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
         "com.typesafe.akka" %% "akka-stream"    % akkaVersion,
         "com.typesafe.akka" %% "akka-http"      % akkaHttpVersion,
-        "com.typesafe.play" %% "play-json"      % "2.6.6",
-        "com.adelegue"             %% "playjson-extended"             % "0.0.3",
+        "com.typesafe.play" %% "play-json"      % "2.6.6",      
         "com.typesafe.akka" %% "akka-testkit"   % akkaVersion       % "test",
         "org.scalatest"     %% "scalatest"      % "3.0.1"           % "test",
         "org.elasticsearch" % "elasticsearch" % "5.5.0" % "test",
