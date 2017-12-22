@@ -50,32 +50,14 @@ lazy val publishSettings =
         Some(s"scm:git:git@github.com:$githubRepo.git")
       )
     ),
+    developers := List(
+      Developer("alexandre.delegue", "Alexandre Delègue", "", url(s"https://github.com/larousso"))
+    ),
     publishMavenStyle := true,
     publishArtifact in Test := false,
     bintrayVcsUrl := Some(s"scm:git:git@github.com:$githubRepo.git"),
     bintrayCredentialsFile := file(".credentials"),
-    pomIncludeRepository := { _ => false },
-    pomExtra := (
-      <url>http://adelegue.org</url>
-        <licenses>
-          <license>
-            <name>Apache 2</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-            <distribution>repo</distribution>
-          </license>
-        </licenses>
-        <scm>
-          <url>https://github.com/larousso/playjson-extended</url>
-          <connection>https://github.com/larousso/playjson-extended</connection>
-        </scm>
-        <developers>
-          <developer>
-            <id>alexandre.delegue</id>
-            <name>Alexandre Delègue</name>
-            <url>https://github.com/larousso</url>
-          </developer>
-        </developers>
-      )
+    pomIncludeRepository := { _ => false }
   )
 
 releaseProcess := Seq[ReleaseStep](
