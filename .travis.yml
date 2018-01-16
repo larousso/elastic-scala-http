@@ -20,4 +20,5 @@ env:
   - secure: ZZb44YwbVApnRMoy1vXVawsAmyhJMadWZyf54oK/mFDaDLNQTzU/Fzad+/fR3bF0yWoBBWsgrSn2CAN038wB0WD+RQnSUA6oRGiXXPpNQ5bhGkg55ljQ4mZSc3iYTgxwh+enbTh28S+OtwiF2oxGzovUZmfHOlB3nKoNtpPqvy4EJaFLhjktVz6D8DHOygzO6oZBkn4bqRjyc3HdFpDOotNeFy95vBrC8B8T7q02454OkuXFndZ3fJLufNGjzzNR548GnI345k44iuxmNcJKty3dz7OzUXfMOgB8C/7WkSS3k9HCSTUH/JndwMQtDARsjlD14GL52JI16ZWmN9GICPgAbF28zmZppoNGh1D2EK+jrHeutV3uKQH6HxRHAd3ZvMW89QyiUnTc4JbA7VdaknfPVts8gIgaKkXSR4lPqEtdjX6PYkU3bkAwUWRnNWmceOsiKs+kH4X6GAYP13m6VjeZgpQ+/9t0uagdjaX3iIuzePIECGO0/7Gby5lYHAZugzJg2y2Ws2FPouHddyP+cZ3LQF5EUNUpUQ+CqxhmN0xxFRDYOA+EsDWyIGo5+EjaoqjZpX4wiP0uyRSYo52VF4bifTJ9Pbbq5cHRBGG5mYZnm12kkif3RujGb672UipKZF1dVinFjEwaN6ZstniLG0fL3it5/IncCYmrvp5JRNk=
 before_install:
 - openssl aes-256-cbc -K $encrypted_e4c36b6f653a_key -iv $encrypted_e4c36b6f653a_iv
-  -in .credentials.enc -out .credentials -d
+  -in secrets.tar.enc -out secrets.tar -d
+- tar xvf secrets.tar
