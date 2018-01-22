@@ -66,7 +66,11 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
   private def buildRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`): HttpRequest = {
     val uri: Uri = query.fold(baseUri.withPath(path))(baseUri.withPath(path).withQuery)
     val headers: immutable.Seq[HttpHeader] = credentials.toList
-    HttpRequest(method, uri, entity = body.map(b => HttpEntity.Strict(contentType, ByteString(b))).getOrElse(HttpEntity.Empty), headers = headers)
+    val httpEntity: UniversalEntity = body
+      .map(b => HttpEntity.Strict(contentType, ByteString(b)))
+      .getOrElse(HttpEntity.Empty)
+      .withoutSizeLimit()
+    HttpRequest(method, uri, entity = httpEntity, headers = headers)
   }
 
   private def request(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] = {
