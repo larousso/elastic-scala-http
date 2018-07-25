@@ -97,7 +97,7 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
     resp
   }
 
-  private def get(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  private def get(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.GET, body, query, contentType, expectedStatus)
 
   private def post(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
@@ -264,6 +264,9 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
     ))
     get(Path.Empty / indexes.mkString(",") / "_recovery", query = query).map(sReader.read)
   }
+
+  override def clusterHealth()(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR] =
+    get(Path.Empty / "_cluster" / "health").map(sReader.read)
 
   override def mget(index: Option[String] = None, `type`: Option[String] = None, request: MGets)(implicit sWriter: Writer[JsonR, String], jsonWriter: Writer[MGets, JsonR], sReader: Reader[String, JsonR], jsonReader: Reader[JsonR, MGetResponse[JsonR]], ec: ExecutionContext): Future[MGetResponse[JsonR]] = {
     val indexPath = index.map(i => Path.Empty / i).map(p => `type`.map(t => p / t).getOrElse(p)).getOrElse(Path.Empty)

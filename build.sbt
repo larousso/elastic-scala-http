@@ -1,8 +1,8 @@
 import sbt.Keys.{organization, scalacOptions}
 import sbtrelease.ReleaseStateTransformations._
 
-val akkaVersion = "2.5.6"
-val akkaHttpVersion = "10.0.10"
+val akkaVersion = "2.5.14"
+val akkaHttpVersion = "10.1.0"
 
 val disabledPlugins = if (sys.env.get("TRAVIS_TAG").filterNot(_.isEmpty).isDefined) {
   Seq()
@@ -26,7 +26,7 @@ lazy val root = (project in file("."))
         "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
         "com.typesafe.akka" %% "akka-stream"    % akkaVersion,
         "com.typesafe.akka" %% "akka-http"      % akkaHttpVersion,
-        "com.typesafe.play" %% "play-json"      % "2.6.6",      
+        "com.typesafe.play" %% "play-json"      % "2.6.6",
         "com.typesafe.akka" %% "akka-testkit"   % akkaVersion       % "test",
         "org.scalatest"     %% "scalatest"      % "3.0.1"           % "test",
         "org.elasticsearch" % "elasticsearch" % "5.5.0" % "test",

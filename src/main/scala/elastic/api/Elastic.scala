@@ -512,6 +512,16 @@ trait Elastic[JsonR] {
     */
   def oneBulk[D](index: Option[String] = None, `type`: Option[String] = None, bulk: Seq[Bulk[D]])(implicit sWrites: Writer[JsonR, String], docWriter: Writer[D, JsonR], bulkOpWriter: Writer[BulkOpType, JsonR], sReader: Reader[String, JsonR], bReader: Reader[JsonR, BulkResponse[JsonR]], ec: ExecutionContext): Future[BulkResponse[JsonR]]
 
+
+  /**
+    * The health of the cluster
+    * https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html
+    *
+    * @param sReader
+    * @return
+    */
+  def clusterHealth()(implicit sReader: Reader[String, JsonR], ec: ExecutionContext): Future[JsonR]
+
 }
 
 /**

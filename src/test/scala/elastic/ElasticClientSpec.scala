@@ -332,7 +332,6 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
       }
     }
 
-
     "indexing document and reading it and deleting it" in {
       cleanUp("test") {
         val index: Index[JsValue] = client.index("test", Some("type"))
