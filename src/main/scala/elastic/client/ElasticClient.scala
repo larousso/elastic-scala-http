@@ -18,7 +18,7 @@ import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-
+case class ElasticClientConfig(server: Uri, credentials: Option[Authorization] = None, clusterVersion: Int = 5)
 
 object ElasticClient {
 
@@ -27,7 +27,7 @@ object ElasticClient {
       u <- Option(user).filterNot(s => s == "")
       p <- Option(password).filterNot(s => s == "")
     } yield Authorization(BasicHttpCredentials(u, p))
-    new ElasticClient[JsonR](Uri(server), credentials = credentials)
+    new ElasticClient[JsonR](ElasticClientConfig(Uri(server), credentials = credentials))
   }
 
   def apply[JsonR](host: String = "localhost", port: Int = 9200, scheme: String = "http", user: String = "", password: String = "")(implicit actorSystem: ActorSystem = ActorSystem("ElasticClient")): ElasticClient[JsonR] = {
@@ -36,15 +36,17 @@ object ElasticClient {
       p <- Option(password).filterNot(s => s == "")
     } yield Authorization(BasicHttpCredentials(u, p))
     val server = Uri().withScheme(scheme).withHost(host).withPort(port)
-    new ElasticClient[JsonR](server, credentials = credentials)
+    new ElasticClient[JsonR](ElasticClientConfig(server, credentials = credentials))
   }
+
+  def apply[JsonR](config: ElasticClientConfig)(implicit actorSystem: ActorSystem): ElasticClient[JsonR] = new ElasticClient[JsonR](config)(actorSystem)
 }
 
 
 /**
   * Created by adelegue on 12/04/2016.
   */
-class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = None)(implicit actorSystem: ActorSystem) extends Elastic[JsonR] {
+class ElasticClient[JsonR](config: ElasticClientConfig)(implicit actorSystem: ActorSystem) extends Elastic[JsonR] {
 
   import akka.event.Logging
 
@@ -57,7 +59,7 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
 
   private val http: HttpExt = Http()
 
-  private val baseUri = server
+  private val baseUri = config.server
 
   private val _this = this
 
@@ -65,7 +67,7 @@ class ElasticClient[JsonR](server: Uri, credentials: Option[Authorization] = Non
 
   private def buildRequest(path: Path, method: HttpMethod, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`): HttpRequest = {
     val uri: Uri = query.fold(baseUri.withPath(path))(baseUri.withPath(path).withQuery)
-    val headers: immutable.Seq[HttpHeader] = credentials.toList
+    val headers: immutable.Seq[HttpHeader] = config.credentials.toList
     val httpEntity: UniversalEntity = body
       .map(b => HttpEntity.Strict(contentType, ByteString(b)))
       .getOrElse(HttpEntity.Empty)
