@@ -1,8 +1,6 @@
 import sbt.Keys.{organization, scalacOptions}
 import sbtrelease.ReleaseStateTransformations._
 
-scalaVersion := "2.12.8"
-
 val akkaVersion = "2.5.21"
 val akkaHttpVersion = "10.1.7"
 
@@ -19,8 +17,7 @@ lazy val root = (project in file("."))
     .settings(
       name := """elastic-scala-http""",
       organization := "com.adelegue",
-      scalaVersion := "2.12.3",
-      crossScalaVersions := Seq("2.11.8", scalaVersion.value),
+      scalaVersion := "2.12.8",
       resolvers ++= Seq(
         Resolver.jcenterRepo
       ),
