@@ -99,16 +99,16 @@ class ElasticClient[JsonR](config: ElasticClientConfig)(implicit actorSystem: Ac
     resp
   }
 
-  private def get(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  def get(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.GET, body, query, contentType, expectedStatus)
 
-  private def post(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  def post(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.POST, body, query, contentType, expectedStatus)
 
-  private def put(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  def put(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.PUT, body, query, contentType, expectedStatus)
 
-  private def delete(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
+  def delete(path: Path, body: Option[String] = None, query: Option[Query] = None, contentType: ContentType = ContentTypes.`application/json`, expectedStatus: Seq[StatusCode] = Seq(StatusCodes.OK, StatusCodes.Created))(implicit jsonReader: Reader[String, JsonR], ec: ExecutionContext): Future[String] =
     request(path, HttpMethods.DELETE, body, query, contentType, expectedStatus)
 
   private def indexPath(names: Seq[String], types: Seq[String]) = names match {

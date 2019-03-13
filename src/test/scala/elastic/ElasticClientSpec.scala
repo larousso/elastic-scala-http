@@ -1,6 +1,7 @@
 package elastic
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.Uri.Path
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import elastic.api._
@@ -33,19 +34,16 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
   implicit val parentFormat = Json.format[Parent]
   implicit val childFormat = Json.format[Child]
 
-  val server = new ElasticEmbeddedServer
   implicit val actorSystem = ActorSystem()
   implicit val mat = ActorMaterializer()
   import actorSystem.dispatcher
 
-  implicit val client: ElasticClient[JsValue] = ElasticClient.fromServer(s"http://localhost:10901")
+  implicit val client: ElasticClient[JsValue] = ElasticClient.fromServer(s"http://localhost:9201")
 
   override protected def beforeAll(): Unit = {
-    //server.run()
   }
 
   override protected def afterAll(): Unit = {
-    //server.stop()
     actorSystem.terminate()
   }
 

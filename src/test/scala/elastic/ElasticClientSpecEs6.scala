@@ -1,6 +1,7 @@
 package elastic
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.Uri.Path
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import elastic.api._
@@ -33,19 +34,30 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
   implicit val parentFormat = Json.format[Parent]
   implicit val childFormat = Json.format[Child]
 
-  val server = new ElasticEmbeddedServer
   implicit val actorSystem = ActorSystem()
   implicit val mat = ActorMaterializer()
   import actorSystem.dispatcher
 
-  implicit val client: ElasticClient[JsValue] = ElasticClient.fromServer(s"http://localhost:10902")
+  implicit val client: ElasticClient[JsValue] = ElasticClient.fromServer(s"http://localhost:9202")
 
   override protected def beforeAll(): Unit = {
-    //server.run()
+    client.put(Path.Empty / "_cluster" / "settings", Some(
+      """
+        |{
+        |    "persistent" : {
+        |        "cluster.routing.allocation.disk.threshold_enabled" : false
+        |    }
+        |}
+      """.stripMargin)).futureValue
+//    client.put(Path.Empty / "_all" / "_settings", Some(
+//      """
+//        |{
+//        |    "index.blocks.read_only_allow_delete": null
+//        |}
+//      """.stripMargin)).futureValue
   }
 
   override protected def afterAll(): Unit = {
-    //server.stop()
     actorSystem.terminate()
   }
 
