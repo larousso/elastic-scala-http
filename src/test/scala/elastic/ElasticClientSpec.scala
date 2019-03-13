@@ -690,7 +690,7 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
           """ { "settings" : { "number_of_shards" : 1 } } """
         client.createIndex("index", Json.parse(jsonSettings)).futureValue mustEqual IndexOps(true)
 
-        client.forceMerge(Seq.empty[String]).futureValue mustEqual IndexResponse(_shards = Shards[JsValue](6, 0, 3, Seq()))
+        client.forceMerge(Seq.empty[String]).futureValue._shards.failed mustEqual 0
       }
     }
 
