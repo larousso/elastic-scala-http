@@ -1,8 +1,8 @@
 import sbt.Keys.{organization, scalacOptions}
 import sbtrelease.ReleaseStateTransformations._
 
-val akkaVersion = "2.5.21"
-val akkaHttpVersion = "10.1.7"
+val akkaVersion = "2.5.26"
+val akkaHttpVersion = "10.1.10"
 
 val disabledPlugins = if (sys.env.get("TRAVIS_TAG").filterNot(_.isEmpty).isDefined) {
   Seq()
@@ -17,7 +17,8 @@ lazy val root = (project in file("."))
     .settings(
       name := """elastic-scala-http""",
       organization := "com.adelegue",
-      scalaVersion := "2.12.8",
+      scalaVersion := "2.13.0",
+      crossScalaVersions := List("2.12.9", "2.13.0"),
       resolvers ++= Seq(
         Resolver.jcenterRepo
       ),
@@ -25,9 +26,10 @@ lazy val root = (project in file("."))
         "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
         "com.typesafe.akka" %% "akka-stream"    % akkaVersion,
         "com.typesafe.akka" %% "akka-http"      % akkaHttpVersion,
-        "com.typesafe.play" %% "play-json"      % "2.7.1",
+        "com.typesafe.play" %% "play-json"      % "2.7.4",
+        "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2",
         "com.typesafe.akka" %% "akka-testkit"   % akkaVersion       % Test,
-        "org.scalatest"     %% "scalatest"      % "3.0.1"           % Test,
+        "org.scalatest"     %% "scalatest"      % "3.0.8"           % Test,
         "org.elasticsearch" % "elasticsearch" % "5.5.0" % Test,
         "org.elasticsearch.plugin" % "transport-netty4-client" % "5.5.0" % Test,
         "org.elasticsearch.plugin" % "reindex-client" % "5.5.0" % Test,
@@ -36,7 +38,7 @@ lazy val root = (project in file("."))
         "org.apache.logging.log4j" % "log4j-core" % "2.8.2" % Test
       ),
       parallelExecution in Test := false,
-      scalacOptions in Test ++= Seq("-Yrangepos")
+      scalacOptions in Test ++= Seq("-Yrangepos", "-deprecation")
     )
   .settings(publishSettings:_*)
 
