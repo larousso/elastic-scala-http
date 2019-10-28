@@ -3,7 +3,7 @@ sudo: false
 scala:
 - 2.13.0
 jdk:
-- oraclejdk8
+- openjdk8
 script: "./travis.sh"
 before_cache:
 - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
