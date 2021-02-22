@@ -54,7 +54,6 @@ lazy val publishCommonsSettings = Seq(
   ),
   publishMavenStyle := true,
   publishArtifact in Test := false,
-  bintrayVcsUrl := Some(s"scm:git:git@github.com:$githubRepo.git"),
   sonatypeProfileName := "com.adelegue",
   sonatypeProjectHosting := Some(GitHubHosting("larousso", "elastic-scala-http", "user@example.com"))
 )
