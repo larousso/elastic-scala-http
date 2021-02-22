@@ -6,7 +6,6 @@ val akkaVersion = "2.6.3"
 val akkaHttpVersion = "10.1.11"
 
 lazy val root = (project in file("."))
-  .disablePlugins(disabledPlugins: _*)
   .enablePlugins(GitVersioning, GitBranchPrompt)
   .settings(
     name := """elastic-scala-http""",
