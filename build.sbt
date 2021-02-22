@@ -10,8 +10,8 @@ lazy val root = (project in file("."))
   .settings(
     name := """elastic-scala-http""",
     organization := "com.adelegue",
-    scalaVersion := "2.13.0",
-    crossScalaVersions := List("2.12.9", "2.13.1"),
+    scalaVersion := "2.13.4",
+    crossScalaVersions := List("2.12.9", "2.13.4"),
     resolvers ++= Seq(
       Resolver.jcenterRepo
     ),
