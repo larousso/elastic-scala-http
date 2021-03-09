@@ -1,4 +1,4 @@
-package elastic.client
+package elastic.es6.client
 
 import akka.NotUsed
 import akka.actor.ActorSystem
@@ -10,8 +10,7 @@ import akka.http.scaladsl.{Http, HttpExt}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.ByteString
-import com.typesafe.config.{Config, ConfigFactory}
-import elastic.api._
+import elastic.es6.api._
 import org.reactivestreams.Publisher
 
 import scala.collection.immutable

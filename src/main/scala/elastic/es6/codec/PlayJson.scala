@@ -1,14 +1,14 @@
-package elastic.codec
+package elastic.es6.codec
 
-import elastic.api._
+import elastic.es6.api.{Bulk, BulkItem, BulkOpDetail, BulkOpType, BulkResponse, BulkResult, GetResponse, Hit, Hits, IndexOps, IndexResponse, MGet, MGetResponse, MGets, Reader, Scroll, SearchResponse, Shards, Writer}
 
 /**
   * Created by adelegue on 12/04/2016.
   */
 object PlayJson {
 
-  import play.api.libs.json._
   import play.api.libs.functional.syntax._
+  import play.api.libs.json._
 
   implicit val shardsReads: Reads[Shards[JsValue]] = (
     (__ \ "total").read[Int] and

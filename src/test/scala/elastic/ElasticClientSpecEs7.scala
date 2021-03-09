@@ -3,15 +3,14 @@ package elastic
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri.Path
 import akka.stream.scaladsl.{Sink, Source}
-import elastic.es6.api._
-import elastic.es6.client.ElasticClient
-import elastic.es6.codec.PlayJson._
-import elastic.implicits._
+import elastic.es7.api._
+import elastic.es7.client.ElasticClient
+import elastic.es7.codec.PlayJson._
 import org.reactivestreams.Publisher
+import org.scalatest._
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures, Waiters}
 import org.scalatest.time.{Minutes, Span}
-import org.scalatest._
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.concurrent.Future
@@ -19,7 +18,7 @@ import scala.concurrent.Future
 /**
   * Created by adelegue on 12\04\2016.
   */
-class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues with ScalaFutures with Waiters with IntegrationPatience with BeforeAndAfterAll {
+class ElasticClientSpecEs7 extends WordSpec with MustMatchers with OptionValues with ScalaFutures with Waiters with IntegrationPatience with BeforeAndAfterAll {
 
   import Helper._
 
@@ -34,7 +33,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
   implicit val actorSystem = ActorSystem()
   import actorSystem.dispatcher
 
-  implicit val client: ElasticClient[JsValue] = ElasticClient.fromServer(s"http://localhost:9202")
+  implicit val client: ElasticClient[JsValue] = ElasticClient.fromServer(s"http://localhost:9203")
 
   override protected def beforeAll(): Unit = {
     client.put(Path.Empty / "_cluster" / "settings", Some(
@@ -79,10 +78,8 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           {
             "settings" : { "number_of_shards" : 1 },
             "mappings" : {
-              "type1" : {
-                "properties" : {
-                  "field1" : { "type" : "keyword" }
-                }
+              "properties" : {
+                "field1" : { "type" : "keyword" }
               }
             }
           }
@@ -92,7 +89,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
         val resp = client.getIndex("test").futureValue
 
         (resp \ "test" \ "settings" \ "index" \ "number_of_shards").as[String] mustEqual "1"
-        (resp \ "test" \ "mappings" \ "type1" \ "properties" \ "field1" \ "type").as[String] mustEqual "keyword"
+        (resp \ "test" \ "mappings" \ "properties" \ "field1" \ "type").as[String] mustEqual "keyword"
       }
     }
 
@@ -112,24 +109,20 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           {
             "settings" : { "number_of_shards" : 1 },
             "mappings" : {
-              "type1" : {
-                "properties" : {
-                  "field1" : { "type" : "keyword" }
-                }
+              "properties" : {
+                "field1" : { "type" : "keyword" }
               }
             }
           }
         """
         client.createIndex("test", Json.parse(jsonSettings)).futureValue mustEqual IndexOps(true)
-        client.getMapping("test", "type1").futureValue mustEqual Json.parse(
+        client.getMapping("test").futureValue mustEqual Json.parse(
           """
         {
           "test" : {
             "mappings" : {
-              "type1" : {
-                "properties" : {
-                  "field1" : { "type" : "keyword" }
-                }
+              "properties" : {
+                "field1" : { "type" : "keyword" }
               }
             }
           }
@@ -143,10 +136,8 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           """
           {
             "mappings" : {
-              "type1" : {
-                "properties" : {
-                  "field1" : { "type" : "keyword" }
-                }
+              "properties" : {
+                "field1" : { "type" : "keyword" }
               }
             }
           }
@@ -154,27 +145,23 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
         client.createIndex("test1", Json.parse(jsonSettings)).futureValue mustEqual IndexOps(true)
         client.createIndex("test2", Json.parse(jsonSettings)).futureValue mustEqual IndexOps(true)
-        client.getMappings(Seq("test1", "test2"), Seq("type1")).futureValue mustEqual Json.parse(
+        client.getMappings(Seq("test1", "test2")).futureValue mustEqual Json.parse(
           """
       {
         "test2": {
           "mappings": {
-            "type1": {
-              "properties": {
-                "field1": {
-                  "type": "keyword"
-                }
+            "properties": {
+              "field1": {
+                "type": "keyword"
               }
             }
           }
         },
         "test1": {
           "mappings": {
-            "type1": {
-              "properties": {
-                "field1": {
-                  "type": "keyword"
-                }
+            "properties": {
+              "field1": {
+                "type": "keyword"
               }
             }
           }
@@ -191,10 +178,8 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           """
           {
             "mappings": {
-              "tweet": {
-                "properties": {
-                  "message": { "type" : "text" }
-                }
+              "properties": {
+                "message": { "type" : "text" }
               }
             }
           }
@@ -208,17 +193,15 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           }
         }
         """
-        client.putMapping("twitter", "tweet", Json.parse(mappingUpdate), false).futureValue mustEqual IndexOps(true)
-        client.getMapping("twitter", "tweet").futureValue mustEqual Json.parse(
+        client.putMapping("twitter", Json.parse(mappingUpdate)).futureValue mustEqual IndexOps(true)
+        client.getMapping("twitter").futureValue mustEqual Json.parse(
           """
         {
           "twitter" : {
             "mappings" : {
-              "tweet" : {
-                "properties" : {
-                  "message": { "type": "text" },
-                  "user_name": { "type" : "text" }
-                }
+              "properties" : {
+                "message": { "type": "text" },
+                "user_name": { "type" : "text" }
               }
             }
           }
@@ -232,10 +215,8 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           """
           {
             "mappings" : {
-              "type1" : {
-                "properties" : {
-                  "field1" : { "type" : "keyword" }
-                }
+              "properties" : {
+                "field1" : { "type" : "keyword" }
               }
             }
           }
@@ -259,7 +240,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
     "indexing document and reading it and deleting it" in {
       cleanUp("test") {
-        val index: Index[JsValue] = client.index("test", Some("type"))
+        val index: Index[JsValue] = client.index("test")
 
         val document = MonDocument("nom")
         val indexResponse = index.index(document, Some("id")).futureValue
@@ -280,7 +261,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
     "indexing twice a document with create option" in {
       cleanUp("test") {
-        val index: Index[JsValue] = client.index("test", Some("type"))
+        val index: Index[JsValue] = client.index("test")
 
         val document = MonDocument("nom")
         val indexResponse = index.index(document, Some("id")).futureValue
@@ -296,16 +277,16 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
     "indexing document with version and reading it" in {
       cleanUp("test") {
-        val index: Index[JsValue] = client.index("test", Some("type"))
+        val index: Index[JsValue] = client.index("test")
 
         val document = MonDocument("nom")
         index.index(document, Some("id")).futureValue._index must be(Some("test"))
 
-        index.get("id").futureValue mustEqual GetResponse("test", "type", "id", 1, true, Json.toJson(document))
+        index.get("id").futureValue mustEqual GetResponse("test", "id", 1, true, Json.toJson(document))
 
-        index.index(document, Some("id"), version = Some(1)).futureValue._index must be(Some("test"))
+        index.index(document, Some("id")).futureValue._index must be(Some("test"))
 
-        index.get("id").futureValue mustEqual GetResponse("test", "type", "id", 2, true, Json.toJson(document))
+        index.get("id").futureValue mustEqual GetResponse("test", "id", 2, true, Json.toJson(document))
 
       }
     }
@@ -317,10 +298,8 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           {
             "settings" : { "number_of_shards" : 1 },
             "mappings" : {
-              "type" : {
-                "properties" : {
-                  "name" : { "type" : "keyword" }
-                }
+              "properties" : {
+                "name" : { "type" : "keyword" }
               }
             }
           }
@@ -328,18 +307,18 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
         client.createIndex("test", Json.parse(jsonSettings)).futureValue mustEqual IndexOps(true)
         client.verifyIndex("test").futureValue mustEqual true
 
-        val index: Index[JsValue] = client.index("test", Some("type"))
+        val index: Index[JsValue] = client.index("test")
 
         val document = MonDocument("nom")
         index.index(document, Some("id")).futureValue._index must be(Some("test"))
 
         val r = index.search(Json.obj("query" -> Json.obj("term" -> Json.obj("name" -> "nom")))).futureValue
-        r.hits.total mustEqual 0
+        r.hits.total mustEqual Total(0, "eq")
 
         index.index(document, Some("id"), refresh = true).futureValue._index must be(Some("test"))
 
         val r2 = index.search(Json.obj("query" -> Json.obj("term" -> Json.obj("name" -> "nom")))).futureValue
-        r2.hits.total mustEqual 1
+        r2.hits.total mustEqual Total(1, "eq")
         r2.hitsAs[MonDocument] mustEqual Seq(document)
       }
     }
@@ -347,16 +326,16 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
     "simple get " in {
       cleanUp("test") {
-        val index: Index[JsValue] = client.index("test", Some("type"))
+        val index: Index[JsValue] = client.index("test")
 
 
-        val responseNotFound = client.index("test" / "type").get("1").failing[EsException[JsValue]]
+        val responseNotFound = client.index("test").get("1").failing[EsException[JsValue]]
         responseNotFound.httpCode mustEqual 404
 
         val document1 = MonDocument("nom")
         index.index(document1, Some("1")).futureValue._index must be(Some("test"))
 
-        val response = client.index("test" / "type").get("1").futureValue
+        val response = client.index("test").get("1").futureValue
         response.found mustEqual true
 
         response.as[MonDocument] mustEqual document1
@@ -365,7 +344,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
     "mget " in {
       cleanUp("test") {
-        val index: Index[JsValue] = client.index("test", Some("type"))
+        val index: Index[JsValue] = client.index("test")
 
         val document1 = MonDocument("nom")
         index.index(document1, Some("1")).futureValue._index must be(Some("test"))
@@ -374,7 +353,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
         index.index(document2, Some("2")).futureValue._index must be(Some("test"))
 
 
-        val response = client.mget(request = MGets(MGet(Some("test"), Some("type"), "1"), MGet(Some("test"), Some("type"), "1"))).futureValue
+        val response = client.mget(request = MGets(MGet(Some("test"), "1"), MGet(Some("test"), "1"))).futureValue
         response.docs.size mustEqual 2
 
         response.docsAs[MonDocument] mustEqual Seq(document1, document2)
@@ -393,18 +372,16 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           |    "number_of_shards": 1
           |  },
           |  "mappings": {
-          |    "type1": {
-          |      "_source": {
-          |        "enabled": false
+          |    "_source": {
+          |      "enabled": false
+          |    },
+          |    "properties": {
+          |      "host_name": {
+          |        "type" : "keyword"
           |      },
-          |      "properties": {
-          |        "host_name": {
-          |          "type" : "keyword"
-          |        },
-          |        "created_at": {
-          |          "type": "date",
-          |          "format": "EEE MMM dd HH:mm:ss Z YYYY"
-          |        }
+          |      "created_at": {
+          |        "type": "date",
+          |        "format": "EEE MMM dd HH:mm:ss Z YYYY"
           |      }
           |    }
           |  }
@@ -417,9 +394,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
       client.
         verifyTemplate("template_1").futureValue mustEqual true
 
-      val
-
-      template1 = Json.parse(
+      val template1 = Json.parse(
         """
           |{
           |  "template_1": {
@@ -431,18 +406,16 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           |      }
           |    },
           |    "mappings": {
-          |      "type1": {
-          |        "_source": {
-          |          "enabled": false
+          |      "_source": {
+          |        "enabled": false
+          |      },
+          |      "properties": {
+          |        "created_at": {
+          |          "format": "EEE MMM dd HH:mm:ss Z YYYY",
+          |          "type": "date"
           |        },
-          |        "properties": {
-          |          "created_at": {
-          |            "format": "EEE MMM dd HH:mm:ss Z YYYY",
-          |            "type": "date"
-          |          },
-          |          "host_name": {
-          |            "type" : "keyword"
-          |          }
+          |        "host_name": {
+          |          "type" : "keyword"
           |        }
           |      }
           |    },
@@ -451,9 +424,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
           |}
         """.stripMargin)
         client.getTemplate("template_1").futureValue mustEqual template1
-
         client.deleteTemplate("template_1").futureValue mustEqual IndexOps(true)
-
         client.verifyTemplate("template_1").futureValue mustEqual false
       }
     }
@@ -462,7 +433,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
       cleanUp("index") {
         val ids = (1 to 105).map(i => i.toString).toList
         val publisher: Publisher[Bulk[MonDocument]] = Source(ids)
-          .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))))
+          .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some(i)))), Some(MonDocument(s"Nom $i"))))
           .runWith(Sink.asPublisher(fanout = false))
 
         val respPublisher: Publisher[BulkResponse[JsValue]] = client.bulk[MonDocument](publisher = publisher, batchSize = 10)
@@ -474,8 +445,8 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
         client.refresh("index").futureValue._shards.failed mustEqual 0
 
-        val search: SearchResponse[JsValue] = client.index("index", Some("type")).search(Json.obj("query" -> Json.obj("match_all" -> Json.obj()))).futureValue
-        search.hits.total mustEqual 105
+        val search: SearchResponse[JsValue] = client.index("index").search(Json.obj("query" -> Json.obj("match_all" -> Json.obj()))).futureValue
+        search.hits.total mustEqual Total(105, "eq")
       }
     }
 
@@ -484,7 +455,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
       cleanUp("index") {
         val ids = (1 to 105).map(i => i.toString).toList
         val res: Future[Seq[BulkResponse[JsValue]]] = Source(ids)
-          .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some("type"), Some(i)))), Some(MonDocument(s"Nom $i"))))
+          .map(i => Bulk[MonDocument](BulkOpType(index = Some(BulkOpDetail(Some("index"), Some(i)))), Some(MonDocument(s"Nom $i"))))
           .via(client.bulkFlow[MonDocument](batchSize = 10))
           .runWith(Sink.seq)
 
@@ -494,8 +465,8 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
         client.refresh("index").futureValue._shards.failed mustEqual 0
 
-        val search: SearchResponse[JsValue] = client.index("index", Some("type")).search(Json.obj("query" -> Json.obj("match_all" -> Json.obj()))).futureValue
-        search.hits.total mustEqual 105
+        val search: SearchResponse[JsValue] = client.index("index").search(Json.obj("query" -> Json.obj("match_all" -> Json.obj()))).futureValue
+        search.hits.total mustEqual Total(105, "eq")
       }
     }
 
@@ -506,7 +477,7 @@ class ElasticClientSpecEs6 extends WordSpec with MustMatchers with OptionValues 
 
         val ids = (1 to 105).map(i => i.toString).toList
         Source(ids)
-          .map(i => Bulk.index("scroll_index", "type", i, MonDocument(s"Nom $i")))
+          .map(i => Bulk.index("scroll_index", i, MonDocument(s"Nom $i")))
           .via(client.bulkFlow[MonDocument](batchSize = 10))
           .runWith(Sink.seq)
           .futureValue
