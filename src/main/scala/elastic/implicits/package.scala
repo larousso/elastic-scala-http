@@ -1,6 +1,6 @@
 package elastic
 
-import elastic.api.TypeDefinition
+import elastic.es6.api.TypeDefinition
 
 /**
   * Created by adelegue on 19/11/2016.

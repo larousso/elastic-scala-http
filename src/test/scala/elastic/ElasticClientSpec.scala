@@ -1,14 +1,11 @@
 package elastic
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.Uri.Path
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import elastic.api._
+import elastic.es6.api._
+import elastic.es6.client.ElasticClient
+import elastic.es6.codec.PlayJson._
 import elastic.implicits._
-import elastic.codec.PlayJson._
-import elastic.client.ElasticClient
-import elastic.spec.ElasticEmbeddedServer
 import org.reactivestreams.Publisher
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures, Waiters}
@@ -35,7 +32,6 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
   implicit val childFormat = Json.format[Child]
 
   implicit val actorSystem = ActorSystem()
-  implicit val mat = ActorMaterializer()
   import actorSystem.dispatcher
 
   implicit val client: ElasticClient[JsValue] = ElasticClient.fromServer(s"http://localhost:9201")
@@ -525,9 +521,7 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
       client.
         verifyTemplate("template_1").futureValue mustEqual true
 
-      val
-
-      template1 = Json.parse(
+      val template1 = Json.parse(
         """
           |{
           |  "template_1": {
@@ -560,6 +554,10 @@ class ElasticClientSpec extends WordSpec with MustMatchers with OptionValues wit
           |}
         """.stripMargin)
         client.getTemplate("template_1").futureValue mustEqual template1
+
+        client.deleteTemplate("template_1").futureValue mustEqual IndexOps(true)
+
+        client.verifyTemplate("template_1").futureValue mustEqual false
       }
     }
 
@@ -786,7 +784,7 @@ object Helper {
         case Success(_) => w.dismiss()
       }
       intercept[T] {
-        w.await
+        w.await()
       }
     }
   }
